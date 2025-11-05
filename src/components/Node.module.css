@@ -1,0 +1,58 @@
+.node {
+  /* define a variable for the accent color */
+  --node-accent-color: var(--mantine-color-pink-5);
+  --node-accent-bg: var(--mantine-color-pink-1);
+
+  background-color: var(--mantine-color-body);
+  border: 1px solid var(--node-accent-color);
+  border-radius: var(--mantine-radius-md);
+  padding: var(--mantine-spacing-sm) 0;
+  width: 200px;
+}
+
+.selected {
+  outline: 2px solid var(--node-accent-bg);
+}
+
+.nestedField {
+  position: relative;
+  background-color: var(--node-accent-bg);
+  border-radius: var(--mantine-radius-md);
+  padding: 0.5rem 1rem;
+}
+
+.handle {
+  border: 2px solid var(--node-accent-color);
+  background-color: var(--mantine-color-body);
+  width: 10px;
+  height: 10px;
+  min-width: 9px;
+  min-height: 9px;
+}
+
+/* Variant modifiers */
+.blue {
+  --node-accent-color: var(--mantine-color-blue-5);
+  --node-accent-bg: var(--mantine-color-blue-1);
+}
+
+.pink {
+  --node-accent-color: var(--mantine-color-pink-5);
+  --node-accent-bg: var(--mantine-color-pink-1);
+}
+
+.green {
+  --node-accent-color: var(--mantine-color-green-5);
+  --node-accent-bg: var(--mantine-color-green-1);
+}
+
+.transformNode {
+  /* define a variable for the accent color */
+  --node-accent-color: var(--mantine-color-green-5);
+  --node-accent-bg: var(--mantine-color-green-1);
+
+  background-color: var(--mantine-color-body);
+  border: 1px solid var(--node-accent-color);
+  border-radius: var(--mantine-radius-md);
+  padding: var(--mantine-spacing-sm);
+}
