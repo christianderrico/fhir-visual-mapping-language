@@ -82,71 +82,8 @@ export const FhirMappingFlow: FC = () => {
 
   const idGenerator = new LabelIdGenerator("test")
 
-  const onSourceNodeConnectEnd = useCallback(
-    (xyPos: XYPosition, connectionState: FinalConnectionState<InternalNode>) => {
-      if (connectionState.fromNode !== null && connectionState.fromHandle !== null) {
-        const parentTypeDef = connectionState.fromNode.data.type as ElementLikeField;
-        const field = connectionState.fromHandle.id as string;
-        const id = idGenerator.getId();
-
-        const fieldDef = parentTypeDef.fields[field];
-        if (fieldDef.kind === "complex" || fieldDef.kind === "backbone-element") {
-          const newNode = {
-            id,
-            type: 'sourceNode',
-            position: xyPos,
-            data: { type: fieldDef, inner: true },
-            origin: [0.5, 0.0] as [number, number],
-          };
-
-          setNodes((nds) => nds.concat(newNode));
-          setEdges((eds) =>
-            eds.concat({
-              id,
-              source: connectionState.fromNode.id,
-              sourceHandle: connectionState.fromHandle.id,
-              target: id,
-            }),
-          );
-        }
-      }
-    }, []);
-
-  const onSourceInnerNodeConnectEnd = useCallback(
-    (xyPos: XYPosition, connectionState: FinalConnectionState<InternalNode>) => {
-      if (connectionState.fromNode !== null && connectionState.fromHandle !== null) {
-        const parentTypeDef = connectionState.fromNode.data.type as ElementLikeField;
-        const field = connectionState.fromHandle.id as string;
-        const id = idGenerator.getId();
-
-        if ('fields' in parentTypeDef) {
-          const fieldDef = parentTypeDef.fields[field];
-          if (fieldDef.kind === "complex" || fieldDef.kind === "backbone-element") {
-            const newNode = {
-              id,
-              type: 'sourceNode',
-              position: xyPos,
-              data: { type: fieldDef, inner: true },
-              origin: [0.5, 0.0] as [number, number],
-            };
-
-            setNodes((nds) => nds.concat(newNode));
-            setEdges((eds) =>
-              eds.concat({
-                id,
-                source: connectionState.fromNode.id,
-                sourceHandle: connectionState.fromHandle.id,
-                target: id,
-              }),
-            );
-          }
-        }
-      }
-    }, []);
-
   const onNodeConnect = useCallback(
-    (opts: { type: 'source' | 'target'}) =>
-    (xyPos: XYPosition, connectionState: FinalConnectionState<InternalNode>) => {
+    (xyPos: XYPosition, connectionState: FinalConnectionState<InternalNode>, opts: { type: 'source' | 'target'}) => {
       const {type} = opts;
       if (connectionState.fromNode !== null && connectionState.fromHandle !== null) {
         const parentTypeDef = connectionState.fromNode.data.type as ElementLikeField | NonPrimitiveResource;
@@ -187,75 +124,6 @@ export const FhirMappingFlow: FC = () => {
     }, 
     []
   )
-
-  const onTargetNodeConnectEnd = useCallback(
-    (xyPos: XYPosition, connectionState: FinalConnectionState<InternalNode>) => {
-      if (connectionState.fromNode !== null && connectionState.fromHandle !== null) {
-        const parentTypeDef = connectionState.fromNode.data.type as ElementLikeField;
-        const field = connectionState.fromHandle.id as string;
-        const id = idGenerator.getId();
-
-        const fieldDef = parentTypeDef.fields[field];
-        if (fieldDef.kind === "complex" || fieldDef.kind === "backbone-element") {
-          const newNode = {
-            id,
-            type: 'targetNode',
-            position: xyPos,
-            data: { type: fieldDef, inner: true },
-            origin: [0.5, 0.0] as [number, number],
-          };
-
-          setNodes((nds) => nds.concat(newNode));
-          setEdges((eds) =>
-            eds.concat({
-              id,
-              target: connectionState.fromNode.id,
-              targetHandle: connectionState.fromHandle.id,
-              source: id,
-            }),
-          );
-        }
-      }
-    }, []);
-
-  const onTargetInnerNodeConnectEnd = useCallback(
-    (xyPos: XYPosition, connectionState: FinalConnectionState<InternalNode>) => {
-      if (connectionState.fromNode !== null && connectionState.fromHandle !== null) {
-        const parentTypeDef = connectionState.fromNode.data.type as ElementLikeField;
-        const field = connectionState.fromHandle.id as string;
-        const id = idGenerator.getId();
-
-        if (parentTypeDef && 'fields' in parentTypeDef) {
-          const fieldDef = parentTypeDef.fields[field];
-          console.log(fieldDef)
-
-          if (fieldDef.kind === "complex" && typeDefMap.getNonPrimitive(fieldDef.value)?.abstract) {
-            console.log("abstract!")
-          }
-
-
-          if (fieldDef.kind === "complex" || fieldDef.kind === "backbone-element") {
-            const newNode = {
-              id,
-              type: 'targetNode',
-              position: xyPos,
-              data: { type: fieldDef, inner: true },
-              origin: [0.5, 0.0] as [number, number],
-            };
-
-            setNodes((nds) => nds.concat(newNode));
-            setEdges((eds) =>
-              eds.concat({
-                id,
-                target: connectionState.fromNode.id,
-                targetHandle: connectionState.fromHandle.id,
-                source: id,
-              }),
-            );
-          }
-        }
-      }
-    }, [])
 
   const onConnectEnd: OnConnectEnd = useCallback(
     (event, connectionState) => {
@@ -303,20 +171,14 @@ export const FhirMappingFlow: FC = () => {
           // );
           return;
         }
-        if (fromNode.type === "targetNode" &&
-          fromNode.data.inner
-        ) {
-          onNodeConnect({ type: 'target'})(xyPos, connectionState)
-          // onTargetInnerNodeConnectEnd(xyPos, connectionState)
+        if (fromNode.type === "targetNode" && fromNode.data.inner) {
+          onNodeConnect(xyPos, connectionState, { type: 'target'})
         } else if (fromNode.type === "targetNode") {
-          onNodeConnect({ type: 'target'})(xyPos, connectionState)
-          // onTargetNodeConnectEnd(xyPos, connectionState)
+          onNodeConnect(xyPos, connectionState, { type: 'target'})
         } else if (fromNode.type === "sourceNode" && fromNode.data.inner) {
-          onNodeConnect({ type: 'source'})(xyPos, connectionState)
-          // onSourceInnerNodeConnectEnd(xyPos, connectionState);
+          onNodeConnect(xyPos, connectionState, { type: 'source'})
         } else if (fromNode.type === "sourceNode") {
-          onNodeConnect({ type: 'source'})(xyPos, connectionState)
-          // onSourceNodeConnectEnd(xyPos, connectionState);
+          onNodeConnect(xyPos, connectionState, { type: 'source'})
         } 
         // else if (connectionState.fromNode?.type === "targetNode" &&
         //   connectionState.fromHandle?.id) {
