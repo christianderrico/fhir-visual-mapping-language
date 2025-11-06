@@ -1,18 +1,18 @@
-import { Typography, Text, Group, Stack } from "@mantine/core";
+import { Text, Group, Stack } from "@mantine/core";
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
-import { useCallback, useContext, useMemo, type FC } from "react";
+import { useContext, useMemo, type FC } from "react";
 import classes from "./Node.module.css"
 import clsx from "clsx";
 import { IconPackage } from '@tabler/icons-react'
 import { TypeDefContext } from "../store/TypeDefContext";
-import type { ComplexElement, DomainResource, FieldDef, TypeDef } from "../utils/types";
+import type { Field, Resource } from "../utils/fhir-types";
 
 const Fields: FC<{
-  fields: Record<string, FieldDef>
+  fields: Record<string, Field>
 }> = ({ fields }) => {
   return (
     <Stack gap="xs">
-      {Object.entries(fields).map(([name, field]) =>
+      {Object.entries(fields).map(([name, _field]) =>
         <div key={name} className={classes.nestedField} style={{ position: 'relative' }}>
           <Text size="xs">{name}</Text>
           <Handle id={name} type="target" position={Position.Left} className={classes.handle} />
@@ -23,7 +23,7 @@ const Fields: FC<{
 }
 
 type TargetNodeProps = 
-  | NodeProps<Node<{ type: DomainResource | ComplexElement | FieldDef, inner?: boolean }>>
+  | NodeProps<Node<{ type: Resource | Field, inner?: boolean }>>
 
 export const TargetNode: FC<TargetNodeProps> = (props) => {
   const typeDefMap = useContext(TypeDefContext);
@@ -33,8 +33,8 @@ export const TargetNode: FC<TargetNodeProps> = (props) => {
     if ("fields" in typeDef) {
       return <Fields fields={typeDef.fields} />
     }
-    if (typeDef.type === "Complex") {
-      const t = typeDefMap[typeDef.of]
+    if (typeDef.kind === "complex") {
+      const t = typeDefMap.getNonPrimitive(typeDef.value)
       if ('fields' in t) {
         return<Fields fields={t.fields} /> 
       }

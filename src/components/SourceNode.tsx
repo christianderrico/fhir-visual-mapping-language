@@ -1,14 +1,14 @@
-import { Typography, Text, Group, Stack } from "@mantine/core";
+import { Text, Group, Stack } from "@mantine/core";
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
 import { useContext, useMemo, type FC } from "react";
 import classes from "./Node.module.css"
 import clsx from "clsx";
 import { IconPackage } from "@tabler/icons-react";
-import type { ComplexElement, DomainResource, FieldDef } from "../utils/types";
 import { TypeDefContext } from "../store/TypeDefContext";
+import type { Field, Resource } from "../utils/fhir-types";
 
 const Fields: FC<{
-  fields: Record<string, FieldDef>
+  fields: Record<string, Field>
 }> = ({ fields }) => {
   return (
     <Stack gap="xs">
@@ -23,7 +23,7 @@ const Fields: FC<{
 }
 
 type SourceNodeProps = 
-  | NodeProps<Node<{ type: DomainResource | ComplexElement | FieldDef, inner?: never }>>
+  | NodeProps<Node<{ type: Resource | Field, inner?: never }>>
 
 export const SourceNode: FC<SourceNodeProps> = (props) => {
   const typeDefMap = useContext(TypeDefContext);
@@ -33,10 +33,10 @@ export const SourceNode: FC<SourceNodeProps> = (props) => {
     if ("fields" in typeDef) {
       return <Fields fields={typeDef.fields} />
     }
-    if (typeDef.type === "Complex") {
-      const t = typeDefMap[typeDef.of]
+    if (typeDef.kind === "complex") {
+      const t = typeDefMap.getNonPrimitive(typeDef.value);
       if ('fields' in t) {
-        return<Fields fields={t.fields} /> 
+        return <Fields fields={t.fields} /> 
       }
     }
     return "(empty)";

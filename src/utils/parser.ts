@@ -1,9 +1,5 @@
 import type { FieldDef, PrimitiveDatatypeDef, TypeDef } from "./types";
 
-export const Parser = {
-  parseStructureDefinition,
-}
-
 function parseStructureDefinition(
   structureDefinition: any
 ): TypeDef {
