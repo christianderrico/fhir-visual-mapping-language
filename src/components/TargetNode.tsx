@@ -4,8 +4,8 @@ import { useContext, useMemo, type FC } from "react";
 import classes from "./Node.module.css"
 import clsx from "clsx";
 import { IconPackage } from '@tabler/icons-react'
-import { TypeDefContext } from "../store/TypeDefContext";
-import type { Field, Resource } from "../utils/fhir-types";
+import { TypeDefContext } from "../../store/TypeDefContext";
+import type { Field, Resource } from "../../utils/fhir-types";
 
 const Fields: FC<{
   fields: Record<string, Field>

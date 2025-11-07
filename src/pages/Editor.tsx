@@ -3,14 +3,16 @@ import { useCallback, useContext, useState, type FC, type FormEvent } from "reac
 import classes from './Editor.module.css';
 import '@xyflow/react/dist/style.css';
 import { addEdge, Background, Controls, ReactFlow, ReactFlowProvider, useEdgesState, useNodesState, useReactFlow, type Connection, type Edge, type FinalConnectionState, type InternalNode, type Node, type OnConnectEnd, type UseNodesInitializedOptions, type XYPosition } from "@xyflow/react";
-import { SourceNode } from "../components/SourceNode";
-import { TargetNode } from "../components/TargetNode";
+import { SourceNode } from "../components/nodes/SourceNode";
+import { TargetNode } from "../components/nodes/TargetNode";
 import './node.css';
 import { LabelIdGenerator } from "../utils/id-generator";
-import { TransformNode } from "../components/TransformNode";
+import { TransformNode } from "../components/nodes/TransformNode";
 import { TypeDefContext } from "../store/TypeDefContext";
 import type { ComplexField, ElementLikeField, Field, NonPrimitiveResource, Resource } from "../utils/fhir-types";
 import { useDisclosure } from "@mantine/hooks";
+import { PromptProvider, usePrompt } from "../store/PromptProvider";
+import { FhirTypesHierarchyImpl } from "../utils/fhir-types-hierarchy";
 
 const nodeTypes = {
   sourceNode: SourceNode,
@@ -23,8 +25,15 @@ type SuspendedTransform =
 
 export const FhirMappingFlow: FC = () => {
   const typeDefMap = useContext(TypeDefContext);
-  const [opened, { open, close }] = useDisclosure(false);
+  const fhirTypeHierarchy = new FhirTypesHierarchyImpl(typeDefMap);
+  const [opened, { close }] = useDisclosure(false);
   const [modalText, setModalText] = useState("");
+  const {
+    askMulti,
+    askSelect,
+    askText,
+    modalProps
+  } = usePrompt();
 
   const [suspendedTransform, setSuspendedTransform] = useState<SuspendedTransform | undefined>(undefined);
 
@@ -71,32 +80,57 @@ export const FhirMappingFlow: FC = () => {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
-  const { screenToFlowPosition, getNode } = useReactFlow();
+  const { screenToFlowPosition } = useReactFlow();
   const onConnect = useCallback((connection: Connection) => {
-
-    // open();
     setEdges((eds) => addEdge({ ...connection }, eds))
   }, [])
-
-  // console.log(nodes)
 
   const idGenerator = new LabelIdGenerator("test")
 
   const onNodeConnect = useCallback(
-    (xyPos: XYPosition, connectionState: FinalConnectionState<InternalNode>, opts: { type: 'source' | 'target'}) => {
+    async (xyPos: XYPosition, connectionState: FinalConnectionState<InternalNode>, opts: { type: 'source' | 'target'}) => {
       const {type} = opts;
       if (connectionState.fromNode !== null && connectionState.fromHandle !== null) {
-        const parentTypeDef = connectionState.fromNode.data.type as ElementLikeField | NonPrimitiveResource;
-        const field = connectionState.fromHandle.id as string;
+        const parentType = connectionState.fromNode.data.type as ElementLikeField | NonPrimitiveResource;
+        const fieldName = connectionState.fromHandle.id as string;
         const id = idGenerator.getId();
 
-        const fieldDef = parentTypeDef.fields[field];
-        if (fieldDef.kind === "complex" || fieldDef.kind === "backbone-element") {
+        const field = parentType.fields[fieldName];
+
+        if (type === "target" && field.kind === "complex" && typeDefMap.getNonPrimitive(field.value)?.abstract) {
+          const abstractField = typeDefMap.getNonPrimitive(field.value)!;
+          const candidates = fhirTypeHierarchy.getImplementations(abstractField?.name)
+
+          const choice = await askSelect(candidates);
+          if (choice) {
+            const choiceType = typeDefMap.getNonPrimitive(choice);
+            const newNode = {
+              id,
+              type: "targetNode",
+              position: xyPos,
+              data: { type: choiceType, inner: true },
+              origin: [0.5, 0.0] as [number, number]
+            }
+            console.log('User selected: ', choice)
+            setNodes((nds) => nds.concat(newNode));
+            setEdges((eds) => eds.concat({
+                id,
+                target: connectionState.fromNode.id,
+                targetHandle: connectionState.fromHandle.id,
+                source: id,
+              }))
+              
+            return;
+          }
+        }
+
+
+        if (field.kind === "complex" || field.kind === "backbone-element") {
           const newNode = {
             id,
             type: type + 'Node',
             position: xyPos,
-            data: { type: fieldDef, inner: true },
+            data: { type: field, inner: true },
             origin: [0.5, 0.0] as [number, number],
           };
 
@@ -126,7 +160,7 @@ export const FhirMappingFlow: FC = () => {
   )
 
   const onConnectEnd: OnConnectEnd = useCallback(
-    (event, connectionState) => {
+    async (event, connectionState) => {
       const { clientX, clientY } =
         'changedTouches' in event ? event.changedTouches[0] : event;
       const xyPos = screenToFlowPosition({ x: clientX, y: clientY });
@@ -142,48 +176,30 @@ export const FhirMappingFlow: FC = () => {
         // e.g.: dragging from Patient.gender, Bundle.total, etc.
         if (fromNode.type === "targetNode" && field.kind === "primitive") {
           const id = idGenerator.getId();
-          console.log(field)
-
-
+          const text = await askText("Select value")
           const newNode = {
             id,
             type: 'transformNode',
             position: xyPos,
-            data: { transformName: 'const', args: ["ciao"] },
+            data: { transformName: 'const', args: [text] },
             origin: [0.5, 0.0] as [number, number],
           };
-          setSuspendedTransform({
-            type: "const",
-            node: newNode,
-            target: connectionState.fromNode!.id,
-            targetHandle: connectionState.fromHandle!.id!,
-          })
-          open();
-          //
-          // setNodes((nds) => nds.concat(newNode));
-          // setEdges((eds) =>
-          //   eds.concat({
-          //     id,
-          //     target: connectionState.fromNode.id,
-          //     targetHandle: connectionState.fromHandle.id,
-          //     source: id,
-          //   }),
-          // );
+          setNodes((nds) => nds.concat(newNode));
+          setEdges((eds) =>
+            eds.concat({
+              id,
+              target: connectionState.fromNode.id,
+              targetHandle: connectionState.fromHandle.id,
+              source: id,
+            }),
+          );
           return;
         }
-        if (fromNode.type === "targetNode" && fromNode.data.inner) {
+        if (fromNode.type === "targetNode") {
           onNodeConnect(xyPos, connectionState, { type: 'target'})
-        } else if (fromNode.type === "targetNode") {
-          onNodeConnect(xyPos, connectionState, { type: 'target'})
-        } else if (fromNode.type === "sourceNode" && fromNode.data.inner) {
-          onNodeConnect(xyPos, connectionState, { type: 'source'})
         } else if (fromNode.type === "sourceNode") {
           onNodeConnect(xyPos, connectionState, { type: 'source'})
         } 
-        // else if (connectionState.fromNode?.type === "targetNode" &&
-        //   connectionState.fromHandle?.id) {
-
-        //   } 
       }
     },
     [screenToFlowPosition],
@@ -197,7 +213,6 @@ export const FhirMappingFlow: FC = () => {
           <Button variant="white" color="red" onClick={close}>Cancel</Button>
           <Button type="submit" >Confirm</Button>
         </Group>
-
       </Modal>
       <ReactFlow
         nodes={nodes}
@@ -230,9 +245,11 @@ export const Editor: FC = () => {
         </div>
       </header>
       <div style={{ height: 'calc(100vh - 56px)', width: '100%' }}>
-        <ReactFlowProvider>
-          <FhirMappingFlow />
-        </ReactFlowProvider>
+        <PromptProvider>
+          <ReactFlowProvider>
+            <FhirMappingFlow />
+          </ReactFlowProvider>
+        </PromptProvider>
       </div>
     </>
   );
