@@ -26,42 +26,12 @@ type SuspendedTransform =
 export const FhirMappingFlow: FC = () => {
   const typeDefMap = useContext(TypeDefContext);
   const fhirTypeHierarchy = new FhirTypesHierarchyImpl(typeDefMap);
-  const [opened, { close }] = useDisclosure(false);
-  const [modalText, setModalText] = useState("");
   const {
     askMulti,
     askSelect,
     askText,
     modalProps
   } = usePrompt();
-
-  const [suspendedTransform, setSuspendedTransform] = useState<SuspendedTransform | undefined>(undefined);
-
-  const onChangeModalText = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setModalText(e.target.value);
-  } 
-
-  const onModalSubmit = (e: React.FormEvent<HTMLDivElement>) => {
-    e.preventDefault();
-
-    if (!suspendedTransform) throw new Error("Illegal state");
-    switch(suspendedTransform.type) {
-      case "const":
-        suspendedTransform.node.data.args = [modalText]
-        setNodes((nds) => nds.concat(suspendedTransform.node));
-        setEdges((eds) =>
-          eds.concat({
-            id: suspendedTransform.node.id,
-            target: suspendedTransform.target,
-            targetHandle: suspendedTransform.targetHandle,
-            source: suspendedTransform.node.id,
-          }),
-        );
-        setModalText("");
-        close();
-
-    }
-  }
 
   const initialNodes: Node[] = [
     { id: 'n1', type: "sourceNode", position: { x: 0, y: 0 }, data: { type: typeDefMap.getNonPrimitive('Bundle') } },
@@ -207,13 +177,6 @@ export const FhirMappingFlow: FC = () => {
 
   return (
     <>
-      <Modal component="form" opened={opened} onClose={close} title="Select Value" onSubmit={onModalSubmit}>
-        <TextInput data-autofocus mb={rem(16)} placeholder="First input" value={modalText} onChange={onChangeModalText} />
-        <Group gap={rem(16)} justify="end">
-          <Button variant="white" color="red" onClick={close}>Cancel</Button>
-          <Button type="submit" >Confirm</Button>
-        </Group>
-      </Modal>
       <ReactFlow
         nodes={nodes}
         edges={edges}
