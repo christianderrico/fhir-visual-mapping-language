@@ -8,12 +8,15 @@ import MotuPatient from "./MotuPatient.json"
 import { fetchStructureDefinition, parseStructureDefinition } from './utils/structure-definition-utils';
 import { typeDefMapFromRecord, type Resource, type TypeDefMap } from './utils/fhir-types';
 
-const staticSds = [
-  "https://hapi.fhir.org/baseR4/StructureDefinition/Identifier?_format=json",
-  "https://hapi.fhir.org/baseR4/StructureDefinition/Patient?_format=json",
-  "https://hapi.fhir.org/baseR4/StructureDefinition/Bundle?_format=json",
-  "https://hapi.fhir.org/baseR4/StructureDefinition/Resource?_format=json",
-]
+const names = [
+  "Identifier",
+  "Patient",
+  "Bundle",
+  "Resource",
+  "Observation",
+  "Encounter"
+] as string[];
+const staticSds = names.map(x => `https://hapi.fhir.org/baseR4/StructureDefinition/${x}?_format=json`);
 
 function App() {
   const [typeDefMap, setTypeDefMap] = useState<TypeDefMap | undefined>(undefined);
@@ -29,9 +32,11 @@ function App() {
 
   return (
     <MantineProvider>
-      <TypeDefContext value={typeDefMap}>
-        {typeDefMap !== undefined && <Editor /> }
-      </TypeDefContext>
+      {typeDefMap &&
+        <TypeDefContext value={typeDefMap}>
+          {typeDefMap !== undefined && <Editor /> }
+        </TypeDefContext>
+      }
     </MantineProvider>
   )
 }
