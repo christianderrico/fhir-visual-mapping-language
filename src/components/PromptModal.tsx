@@ -2,7 +2,7 @@ import { Modal, Select, TextInput, Button, Group, rem, Stack, FocusTrap } from "
 import { useCallbackRef } from "@mantine/hooks";
 import { useCallback, useState } from "react";
 
-type PromptType = 
+export type PromptType = 
   | { type: 'select'; options: string[]; title: string }
   | { type: 'text'; title: string; placeholder?: string }
   | { type: 'multi'; fields: { label: string; name: string }[]; title: string };

@@ -1,27 +1,24 @@
-import { Button, Group, Modal, rem, TextInput } from "@mantine/core";
-import { useCallback, useContext, useState, type FC, type FormEvent } from "react";
+import { Button, Group } from "@mantine/core";
+import { useCallback, useContext, type FC } from "react";
 import classes from './Editor.module.css';
 import '@xyflow/react/dist/style.css';
-import { addEdge, Background, Controls, ReactFlow, ReactFlowProvider, useEdgesState, useNodesState, useReactFlow, type Connection, type Edge, type FinalConnectionState, type InternalNode, type Node, type OnConnectEnd, type UseNodesInitializedOptions, type XYPosition } from "@xyflow/react";
+import { addEdge, Background, Controls, ReactFlow, ReactFlowProvider, useEdgesState, useNodesState, useReactFlow, type Connection, type Edge, type FinalConnectionState, type InternalNode, type Node, type OnConnectEnd, type XYPosition } from "@xyflow/react";
 import { SourceNode } from "../components/nodes/SourceNode";
 import { TargetNode } from "../components/nodes/TargetNode";
 import './node.css';
 import { LabelIdGenerator } from "../utils/id-generator";
 import { TransformNode } from "../components/nodes/TransformNode";
 import { TypeDefContext } from "../store/TypeDefContext";
-import type { ComplexField, ElementLikeField, Field, NonPrimitiveResource, Resource } from "../utils/fhir-types";
-import { useDisclosure } from "@mantine/hooks";
+import type { ComplexField, ElementLikeField, NonPrimitiveResource } from "../utils/fhir-types";
 import { PromptProvider, usePrompt } from "../store/PromptProvider";
 import { FhirTypesHierarchyImpl } from "../utils/fhir-types-hierarchy";
+import { IconFaceIdError } from "@tabler/icons-react";
 
 const nodeTypes = {
   sourceNode: SourceNode,
   targetNode: TargetNode,
   transformNode: TransformNode,
 }
-
-type SuspendedTransform = 
-  | { type: "const", node: Node, target: string, targetHandle: string }
 
 export const FhirMappingFlow: FC = () => {
   const typeDefMap = useContext(TypeDefContext);
@@ -57,6 +54,30 @@ export const FhirMappingFlow: FC = () => {
 
   const idGenerator = new LabelIdGenerator("test")
 
+  const createNewNode = useCallback(
+    (opts: {
+      node: Omit<Node, 'id'>;
+      attachTo:
+        | { target: string; targetHandle: string, source?: never, sourceHandle?: never }
+        | { source: string; sourceHandle: string, target?: never; targetHandle?: never }
+    }) => {
+      const { node, attachTo } = opts;
+      const id = idGenerator.getId();
+      const edgeProperties = 'source' in attachTo ? {
+        id, 
+        ...attachTo,
+        target: id,
+      } as { id: string, source: string; sourceHandle: string, target: string, targetHandle?: never } : {
+        id, 
+        ...attachTo,
+        source: id,
+      };
+      setNodes((nds) => nds.concat({ ...node, id }));
+      setEdges((eds) => eds.concat({ ...edgeProperties }))
+    },
+    [idGenerator, setNodes, setEdges]
+  ); 
+
   const onNodeConnect = useCallback(
     async (xyPos: XYPosition, connectionState: FinalConnectionState<InternalNode>, opts: { type: 'source' | 'target'}) => {
       const {type} = opts;
@@ -74,55 +95,38 @@ export const FhirMappingFlow: FC = () => {
           const choice = await askSelect(candidates);
           if (choice) {
             const choiceType = typeDefMap.getNonPrimitive(choice);
-            const newNode = {
-              id,
-              type: "targetNode",
-              position: xyPos,
-              data: { type: choiceType, inner: true },
-              origin: [0.5, 0.0] as [number, number]
-            }
-            console.log('User selected: ', choice)
-            setNodes((nds) => nds.concat(newNode));
-            setEdges((eds) => eds.concat({
-                id,
-                target: connectionState.fromNode.id,
-                targetHandle: connectionState.fromHandle.id,
-                source: id,
-              }))
-              
-            return;
+            return createNewNode({
+              node: {
+                type: "targetNode",
+                position: xyPos,
+                data: { type: choiceType, inner: true },
+                origin: [0.5, 0.0] as [number, number]
+              },
+              attachTo: {
+                target: connectionState.fromNode!.id,
+                targetHandle: connectionState.fromHandle!.id!,
+              }
+            })
           }
         }
 
 
         if (field.kind === "complex" || field.kind === "backbone-element") {
-          const newNode = {
-            id,
-            type: type + 'Node',
-            position: xyPos,
-            data: { type: field, inner: true },
-            origin: [0.5, 0.0] as [number, number],
-          };
-
-          setNodes((nds) => nds.concat(newNode));
-          setEdges((eds) => {
-            if (type === "target") {
-              return eds.concat({
-                id,
-                target: connectionState.fromNode.id,
-                targetHandle: connectionState.fromHandle.id,
-                source: id,
-              })
-            } else {
-              return eds.concat({
-                id,
-                source: connectionState.fromNode.id,
-                sourceHandle: connectionState.fromHandle.id,
-                target: id,
-              })
+          createNewNode({
+            node: {
+              type: type + 'Node',
+              position: xyPos,
+              data: { type: field, inner: true },
+              origin: [0.5, 0.0] as [number, number],
+            },
+            attachTo: type === "target" ? {
+              target: connectionState.fromNode!.id,
+              targetHandle: connectionState.fromHandle!.id!,
+            } : {
+              source: connectionState.fromNode!.id,
+              sourceHandle: connectionState.fromHandle!.id!,
             }
-          }
-          );
+          });
         }
       }
     }, 
@@ -147,23 +151,18 @@ export const FhirMappingFlow: FC = () => {
         if (fromNode.type === "targetNode" && field.kind === "primitive") {
           const id = idGenerator.getId();
           const text = await askText("Select value")
-          const newNode = {
-            id,
-            type: 'transformNode',
-            position: xyPos,
-            data: { transformName: 'const', args: [text] },
-            origin: [0.5, 0.0] as [number, number],
-          };
-          setNodes((nds) => nds.concat(newNode));
-          setEdges((eds) =>
-            eds.concat({
-              id,
-              target: connectionState.fromNode.id,
-              targetHandle: connectionState.fromHandle.id,
-              source: id,
-            }),
-          );
-          return;
+          return createNewNode({
+            node: {
+              type: 'transformNode',
+              position: xyPos,
+              data: { transformName: 'const', args: [text] },
+              origin: [0.5, 0.0] as [number, number],
+            },
+            attachTo: {
+              target: connectionState.fromNode!.id,
+              targetHandle: connectionState.fromHandle!.id!
+            }
+          });
         }
         if (fromNode.type === "targetNode") {
           onNodeConnect(xyPos, connectionState, { type: 'target'})
