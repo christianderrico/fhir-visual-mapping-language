@@ -5,14 +5,9 @@ export interface FhirTypesHierarchy {
 }
 
 export class FhirTypesHierarchyImpl implements FhirTypesHierarchy {
-
-  constructor(private typeDefMap: TypeDefMap) { }
+  constructor(private typeDefMap: TypeDefMap) {}
 
   getImplementations(type: string): string[] {
-    return [
-      "Identifier",
-      "Patient",
-      "Bundle",
-    ]
+    return ["Identifier", "Patient", "Bundle"];
   }
 }

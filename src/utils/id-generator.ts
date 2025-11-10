@@ -5,11 +5,14 @@ export interface IdGenerator {
 export class LabelIdGenerator implements IdGenerator {
   private counter: number;
 
-  constructor(private label: string, startFrom: number = 0) {
+  constructor(
+    private label: string,
+    startFrom: number = 0,
+  ) {
     this.counter = startFrom;
   }
 
   getId(): string {
-    return `${this.label}__${this.counter++}`
+    return `${this.label}__${this.counter++}`;
   }
 }

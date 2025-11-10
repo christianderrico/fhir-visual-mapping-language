@@ -1,59 +1,58 @@
 {
-    "resourceType": "StructureDefinition",
-    "id": "MotuPatient",
-    "url": "http://hl7.org/fhir/StructureDefinition/MotuPatient",
-    "name": "MotuPatient",
-    "status": "draft",
-    "fhirVersion": "4.0.1",
-    "kind": "logical",
-    "abstract": true,
-    "type": "MotuPatient",
-    "snapshot": {
-      "element": [
-        {
-          "id": "MotuPatient",
-          "path": "MotuPatient",
-          "definition": "MotuPatient definition",
-          "min": 1,
-          "max": 1
-        },
-        {
-          "id": "MotuPatient.anonymousId",
-          "path": "MotuPatient.anonymousId",
-          "definition": "MotuPatient anonymousId",
-          "min": 1,
-          "max": 1,
-          "type": [
-            {
-              "code": "string"
-            }
-          ]
-        },
-        {
-          "id": "MotuPatient.sex",
-          "path": "MotuPatient.sex",
-          "definition": "MotuPatient Sex",
-          "min": 1,
-          "max": 1,
-          "type": [
-            {
-              "code": "code"
-            }
-          ]
-        },
-        {
-          "id": "MotuPatient.birthday",
-          "path": "MotuPatient.birthday",
-          "definition": "MotuPatient birthday",
-          "min": 1,
-          "max": 1,
-          "type": [
-            {
-              "code": "date"
-            }
-          ]
-        }
-      ]
-    }
+  "resourceType": "StructureDefinition",
+  "id": "MotuPatient",
+  "url": "http://hl7.org/fhir/StructureDefinition/MotuPatient",
+  "name": "MotuPatient",
+  "status": "draft",
+  "fhirVersion": "4.0.1",
+  "kind": "logical",
+  "abstract": true,
+  "type": "MotuPatient",
+  "snapshot": {
+    "element": [
+      {
+        "id": "MotuPatient",
+        "path": "MotuPatient",
+        "definition": "MotuPatient definition",
+        "min": 1,
+        "max": 1
+      },
+      {
+        "id": "MotuPatient.anonymousId",
+        "path": "MotuPatient.anonymousId",
+        "definition": "MotuPatient anonymousId",
+        "min": 1,
+        "max": 1,
+        "type": [
+          {
+            "code": "string"
+          }
+        ]
+      },
+      {
+        "id": "MotuPatient.sex",
+        "path": "MotuPatient.sex",
+        "definition": "MotuPatient Sex",
+        "min": 1,
+        "max": 1,
+        "type": [
+          {
+            "code": "code"
+          }
+        ]
+      },
+      {
+        "id": "MotuPatient.birthday",
+        "path": "MotuPatient.birthday",
+        "definition": "MotuPatient birthday",
+        "min": 1,
+        "max": 1,
+        "type": [
+          {
+            "code": "date"
+          }
+        ]
+      }
+    ]
   }
-  
+}

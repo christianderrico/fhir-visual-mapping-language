@@ -10,8 +10,7 @@ export interface TypeEnvironment {
 }
 
 export class SimpleTypeEnvironment implements TypeEnvironment {
-
-  constructor(private typeMap: TypeMap) { }
+  constructor(private typeMap: TypeMap) {}
 
   hasType(typeName: string): boolean {
     return this.typeMap[typeName] !== undefined;
@@ -23,7 +22,7 @@ export class SimpleTypeEnvironment implements TypeEnvironment {
 
   getTypeFields(typeName: string): Record<string, Field> | undefined {
     const type = this.getType(typeName);
-    if (type !== undefined && 'fields' in type!) {
+    if (type !== undefined && "fields" in type!) {
       return type.fields;
     }
     return undefined;
@@ -31,12 +30,14 @@ export class SimpleTypeEnvironment implements TypeEnvironment {
 
   resolvePathType(typeName: string, pathParts: string[]): Field | undefined {
     const [head, ...tail] = pathParts as [string, ...string[]];
-    const type = this.getType(typeName)
+    const type = this.getType(typeName);
 
-    if (type === undefined
-      || pathParts.length === 0
-      || (!('fields' in type))
-      || type.fields[head] === undefined) {
+    if (
+      type === undefined ||
+      pathParts.length === 0 ||
+      !("fields" in type) ||
+      type.fields[head] === undefined
+    ) {
       return undefined;
     }
 
@@ -46,12 +47,12 @@ export class SimpleTypeEnvironment implements TypeEnvironment {
   getImplementations(typeName: string): Resource[] {
     // TODO: hold these data somewhere, likely in constructor
     // throw new Error("not implemented yet");
-    return ["Bundle", "Identifier", "Patient"].map(name => ({
+    return ["Bundle", "Identifier", "Patient"].map((name) => ({
       kind: "resource",
       name,
       fields: {},
       abstract: false,
-    }))
+    }));
   }
 
   private resolveTail(field: Field, pathParts: string[]): Field | undefined {
@@ -77,6 +78,6 @@ export class SimpleTypeEnvironment implements TypeEnvironment {
 
     if (!next) return undefined;
 
-    return this.resolveTail(next, tail)
+    return this.resolveTail(next, tail);
   }
 }
