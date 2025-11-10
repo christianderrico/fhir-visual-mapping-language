@@ -1,5 +1,5 @@
 import { createContext } from "react";
-import type { TypeDefMap } from "../utils/fhir-types";
+import type { TypeDefMap } from "../model/fhir-types";
 
 export const TypeDefContext = createContext<TypeDefMap>({
   get: () => undefined,

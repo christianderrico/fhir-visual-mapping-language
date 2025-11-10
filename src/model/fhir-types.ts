@@ -11,8 +11,6 @@ export type Resource = (
   abstract: boolean;
 }
 
-export type NonPrimitiveResource = Exclude<Resource, { kind: "primitive-type" }>;
-
 export function isResource(obj: any): obj is Resource {
   return typeof obj === "object" &&
     new Set(["resource", "complex-type", "primitive-type", "logical"]).has(obj.kind);
@@ -30,16 +28,9 @@ export type Field = (
   | { kind: "alternatives", value: Field[] }
 ) & { name: string, path: string, min: number, max: number | "*" }
 
-export type ElementLikeField = Extract<Field, { kind: "element" | "backbone-element" }>;
-export type ComplexField = Extract<Field, { kind: "complex" }>;
-
 export function isField(obj: any): obj is Field {
   return typeof obj === "object" &&
     new Set(["primitive", "backbone-element", "element", "complex", "reference", "alternative"]).has(obj.kind);
-}
-
-export function isElementLike(field: Field): field is ElementLikeField {
-  return field.kind === "element" || field.kind === "backbone-element"
 }
 
 export function isFieldSubtype(t1: Field, t2: Field): boolean {

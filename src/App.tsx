@@ -3,10 +3,11 @@ import '@mantine/core/styles.css';
 
 import { MantineProvider } from '@mantine/core';
 import { Editor } from './pages/Editor';
-import { TypeDefContext } from './store/TypeDefContext';
 import MotuPatient from "./MotuPatient.json"
-import { fetchStructureDefinition, parseStructureDefinition } from './utils/structure-definition-utils';
-import { typeDefMapFromRecord, type Resource, type TypeDefMap } from './utils/fhir-types';
+import { fetchStructureDefinition, parseStructureDefinition } from './model/structure-definition-utils';
+import type { Resource } from './model/fhir-types';
+import { TypeEnvironmentContext } from './providers/TypeEnvironmentProvider';
+import { SimpleTypeEnvironment, type TypeEnvironment } from './model/type-environment';
 
 const names = [
   "Identifier",
@@ -19,23 +20,23 @@ const names = [
 const staticSds = names.map(x => `https://hapi.fhir.org/baseR4/StructureDefinition/${x}?_format=json`);
 
 function App() {
-  const [typeDefMap, setTypeDefMap] = useState<TypeDefMap | undefined>(undefined);
+  const [typeEnv, setTypeEnv] = useState<TypeEnvironment | null>(null);
 
   useEffect(() => {
     Promise.all(staticSds.map(fetchStructureDefinition))
       .then(entries => entries.filter((t): t is Resource => Boolean(t)))
       .then(entries => Object.fromEntries(entries.map(t=> [t.name, t] as [string, Resource])))
-      .then(entries => ({ ...entries, MotuPatient: parseStructureDefinition(MotuPatient) }))
-      .then(x => typeDefMapFromRecord(x as any))
-      .then(x => setTypeDefMap(x))
+      .then(entries => ({ ...entries, MotuPatient: parseStructureDefinition(MotuPatient) as Resource}))
+      .then(typeMap => new SimpleTypeEnvironment(typeMap))
+      .then(typeEnv => setTypeEnv(typeEnv))
   }, [staticSds]);
 
   return (
     <MantineProvider>
-      {typeDefMap &&
-        <TypeDefContext value={typeDefMap}>
-          {typeDefMap !== undefined && <Editor /> }
-        </TypeDefContext>
+      {typeEnv &&
+        <TypeEnvironmentContext.Provider value={typeEnv}>
+          <Editor />
+        </TypeEnvironmentContext.Provider>
       }
     </MantineProvider>
   )
