@@ -4,27 +4,28 @@ import { useCallback, useContext, useMemo, type FC } from "react";
 import classes from "./Node.module.css"
 import clsx from "clsx";
 import { IconPackage } from '@tabler/icons-react'
-import { TypeDefContext } from "../../store/TypeDefContext";
 import type { Field, Resource } from "../../model/fhir-types";
-import { useDisclosure } from "@mantine/hooks";
+import { useTypeEnvironment } from "../../providers/TypeEnvironmentProvider";
+import { getNonPrimitiveType } from "../../model/type-environment-utils";
 
 type TargetNodeProps = 
   | NodeProps<Node<{ type: Resource | Field, inner?: boolean }>>
 
 export const TargetNode: FC<TargetNodeProps> = (props) => {
-  const typeDefMap = useContext(TypeDefContext);
+  const typeEnv = useTypeEnvironment();
   const typeDef = props.data.type;
 
   const fields = useMemo(() => {
+    const getNonPrimitive = getNonPrimitiveType(typeEnv);
     if ("fields" in typeDef) {
       return typeDef.fields;
     }
     if (typeDef.kind === "complex") {
-      const t = typeDefMap.getNonPrimitive(typeDef.value)
+      const t = getNonPrimitive(typeDef.value)
       return t?.fields ?? [];
     }
     return [];
-  }, [typeDef, typeDefMap])
+  }, [typeDef, typeEnv])
 
   const Fields: FC = useCallback(() => 
     <Stack gap="xs">

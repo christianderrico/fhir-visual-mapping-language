@@ -43,7 +43,7 @@ export function parseStructureDefinition(structureDefinition: any): Resource | u
   for (const elem of snapshot.element) {
     const {path, min, max, type} = elem;
 
-    let parts = path.split(".");
+    const parts = path.split(".");
     if (parts.length === 1) continue;
 
     // e.g. Patient.contact.name becomes (given Patient is implicit)

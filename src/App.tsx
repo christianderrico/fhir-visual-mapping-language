@@ -17,6 +17,7 @@ const names = [
   "Observation",
   "Encounter"
 ] as string[];
+
 const staticSds = names.map(x => `https://hapi.fhir.org/baseR4/StructureDefinition/${x}?_format=json`);
 
 function App() {

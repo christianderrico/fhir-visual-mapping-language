@@ -20,7 +20,8 @@ export function isResource(obj: any): obj is Resource {
  * Represents all the possible values that a field of a `Type` can have.
  */
 export type Field = (
-  | { kind: "primitive", value: Datatype }
+  | { kind: "primitive", value: Datatype.CODE, options: string[] }
+  | { kind: "primitive", value: Exclude<Datatype, Datatype.CODE> }
   | { kind: "backbone-element", fields: Record<string, Field> }
   | { kind: "element", fields: Record<string, Field> }
   | { kind: "complex", value: string }

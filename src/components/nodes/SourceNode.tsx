@@ -1,11 +1,12 @@
 import { Text, Group, Stack } from "@mantine/core";
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
-import { useContext, useMemo, type FC } from "react";
+import { useMemo, type FC } from "react";
 import classes from "./Node.module.css"
 import clsx from "clsx";
 import { IconPackage } from "@tabler/icons-react";
-import { TypeDefContext } from "../../store/TypeDefContext";
 import type { Field, Resource } from "../../model/fhir-types";
+import { useTypeEnvironment } from "../../providers/TypeEnvironmentProvider";
+import { getNonPrimitiveType } from "../../model/type-environment-utils";
 
 const Fields: FC<{
   fields: Record<string, Field>
@@ -26,21 +27,22 @@ type SourceNodeProps =
   | NodeProps<Node<{ type: Resource | Field, inner?: never }>>
 
 export const SourceNode: FC<SourceNodeProps> = (props) => {
-  const typeDefMap = useContext(TypeDefContext);
+  const typeEnvironment = useTypeEnvironment()
   const typeDef = props.data.type;
 
   const fields = useMemo(() => {
+    const getNonPrimitive = getNonPrimitiveType(typeEnvironment);
     if ("fields" in typeDef) {
       return <Fields fields={typeDef.fields} />
     }
     if (typeDef.kind === "complex") {
-      const t = typeDefMap.getNonPrimitive(typeDef.value);
+      const t = getNonPrimitive(typeDef.value)!;
       if ('fields' in t) {
         return <Fields fields={t.fields} /> 
       }
     }
     return "(empty)";
-  }, [typeDefMap, typeDef]);
+  }, [typeEnvironment, typeDef]);
 
   return (
     <div className={clsx(classes.node, classes.pink, props.selected && classes.selected)}>
