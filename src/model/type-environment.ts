@@ -1,36 +1,37 @@
 import type { Field, Resource } from "./fhir-types";
+import { type URL, url as makeUrl } from "./strict-types";
 import type { TypeMap } from "./type-map";
 
 export interface TypeEnvironment {
-  hasType(typeName: string): boolean;
-  getType(typeName: string): Resource | undefined;
-  getTypeFields(typeName: string): Record<string, Field> | undefined;
-  resolvePathType(typeName: string, pathParts: string[]): Field | undefined;
-  getImplementations(typeName: string): Resource[];
+  hasType(url: URL): boolean;
+  getType(url: URL): Resource | undefined;
+  getTypeFields(url: URL): Record<string, Field> | undefined;
+  resolvePathType(url: URL, pathParts: string[]): Field | undefined;
+  getImplementations(url: URL): Resource[];
 }
 
 export class SimpleTypeEnvironment implements TypeEnvironment {
   constructor(private typeMap: TypeMap) {}
 
-  hasType(typeName: string): boolean {
-    return this.typeMap[typeName] !== undefined;
+  hasType(url: URL): boolean {
+    return this.typeMap[url] !== undefined;
   }
 
-  getType(typeName: string): Resource | undefined {
-    return this.typeMap[typeName];
+  getType(url: URL): Resource | undefined {
+    return this.typeMap[url];
   }
 
-  getTypeFields(typeName: string): Record<string, Field> | undefined {
-    const type = this.getType(typeName);
+  getTypeFields(url: URL): Record<string, Field> | undefined {
+    const type = this.getType(url);
     if (type !== undefined && "fields" in type!) {
       return type.fields;
     }
     return undefined;
   }
 
-  resolvePathType(typeName: string, pathParts: string[]): Field | undefined {
+  resolvePathType(url: URL, pathParts: string[]): Field | undefined {
     const [head, ...tail] = pathParts as [string, ...string[]];
-    const type = this.getType(typeName);
+    const type = this.getType(url);
 
     if (
       type === undefined ||
@@ -44,12 +45,14 @@ export class SimpleTypeEnvironment implements TypeEnvironment {
     return this.resolveTail(type.fields[head], tail);
   }
 
-  getImplementations(typeName: string): Resource[] {
+  getImplementations(url: URL): Resource[] {
     // TODO: hold these data somewhere, likely in constructor
     // throw new Error("not implemented yet");
     return ["Bundle", "Identifier", "Patient"].map((name) => ({
+      url: makeUrl(`https://hl7.org/fhir/${name}`),
       kind: "resource",
       name,
+      title: name,
       fields: {},
       abstract: false,
     }));

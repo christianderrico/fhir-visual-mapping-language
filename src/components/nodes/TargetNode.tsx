@@ -11,7 +11,7 @@ import classes from "./Node.module.css";
 import clsx from "clsx";
 import { IconPackage } from "@tabler/icons-react";
 import type { Field, Resource } from "../../model/fhir-types";
-import { useTypeEnvironment } from "../../providers/TypeEnvironmentProvider";
+import { useTypeEnvironment } from "../../hooks/useTypeEnvironment";
 import { getNonPrimitiveType } from "../../model/type-environment-utils";
 
 type TargetNodeProps = NodeProps<

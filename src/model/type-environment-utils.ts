@@ -1,4 +1,5 @@
 import type { Field, Resource } from "./fhir-types";
+import type { URL } from "./strict-types";
 import type { TypeEnvironment } from "./type-environment";
 
 export type NonPrimitiveResource = Exclude<
@@ -18,7 +19,7 @@ export function isElementLike(field: Field): field is ElementLikeField {
 
 export const getNonPrimitiveType =
   (typeEnvironment: TypeEnvironment) =>
-  (typeName: string): NonPrimitiveResource | undefined => {
+  (typeName: URL): NonPrimitiveResource | undefined => {
     const read = typeEnvironment.getType(typeName);
     if (read?.kind === "primitive-type") return undefined;
     return read;

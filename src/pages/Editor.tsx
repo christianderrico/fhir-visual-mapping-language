@@ -1,7 +1,4 @@
 import { Button, Group } from "@mantine/core";
-import { useCallback, type FC } from "react";
-import classes from "./Editor.module.css";
-import "@xyflow/react/dist/style.css";
 import {
   addEdge,
   Background,
@@ -19,20 +16,24 @@ import {
   type OnConnectEnd,
   type XYPosition,
 } from "@xyflow/react";
+import "@xyflow/react/dist/style.css";
+import { useCallback, type FC } from "react";
 import { SourceNode } from "../components/nodes/SourceNode";
 import { TargetNode } from "../components/nodes/TargetNode";
-import "./node.css";
-import { LabelIdGenerator } from "../utils/id-generator";
 import { TransformNode } from "../components/nodes/TransformNode";
 import type {
   ComplexField,
   ElementLikeField,
   NonPrimitiveResource,
 } from "../model/type-environment-utils.ts";
+import { LabelIdGenerator } from "../utils/id-generator";
+import classes from "./Editor.module.css";
+import "./node.css";
 
-import { PromptProvider, usePrompt } from "../providers/PromptProvider";
-import { useTypeEnvironment } from "../providers/TypeEnvironmentProvider";
+import { useTypeEnvironment } from "../hooks/useTypeEnvironment";
 import { getNonPrimitiveType as _getNonPrimitiveType } from "../model/type-environment-utils";
+import { PromptProvider, usePrompt } from "../providers/PromptProvider";
+import { url } from "../model/strict-types.ts";
 
 const nodeTypes = {
   sourceNode: SourceNode,
@@ -54,19 +55,31 @@ export const FhirMappingFlow: FC = () => {
       id: "n1",
       type: "sourceNode",
       position: { x: 0, y: 0 },
-      data: { type: getNonPrimitive("Bundle") },
+      data: {
+        type: getNonPrimitive(
+          url("http://hl7.org/fhir/StructureDefinition/Bundle"),
+        ),
+      },
     },
     {
       id: "n2",
       type: "targetNode",
       position: { x: 600, y: 0 },
-      data: { type: getNonPrimitive("Patient") },
+      data: {
+        type: getNonPrimitive(
+          url("http://hl7.org/fhir/StructureDefinition/Patient"),
+        ),
+      },
     },
     {
       id: "n2",
       type: "targetNode",
       position: { x: 900, y: 0 },
-      data: { type: getNonPrimitive("Bundle") },
+      data: {
+        type: getNonPrimitive(
+          url("http://hl7.org/fhir/StructureDefinition/Bundle"),
+        ),
+      },
     },
     {
       id: "transform1",

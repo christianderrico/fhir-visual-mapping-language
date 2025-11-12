@@ -14,6 +14,8 @@ import {
   SimpleTypeEnvironment,
   type TypeEnvironment,
 } from "./model/type-environment";
+import type { TypeMap } from "./model/type-map";
+import type { URL } from "./model/strict-types";
 
 const names = [
   "Identifier",
@@ -35,17 +37,19 @@ function App() {
     Promise.all(staticSds.map(fetchStructureDefinition))
       .then((entries) => entries.filter((t): t is Resource => Boolean(t)))
       .then((entries) =>
-        Object.fromEntries(
-          entries.map((t) => [t.name, t] as [string, Resource]),
-        ),
+        Object.fromEntries(entries.map((t) => [t.url, t] as [URL, Resource])),
       )
       .then((entries) => ({
         ...entries,
-        MotuPatient: parseStructureDefinition(MotuPatient) as Resource,
+        [MotuPatient.url]: parseStructureDefinition(MotuPatient) as Resource,
       }))
       .then((typeMap) => new SimpleTypeEnvironment(typeMap))
       .then((typeEnv) => setTypeEnv(typeEnv));
   }, [staticSds]);
+
+  useEffect(() => {
+    console.log(typeEnv);
+  }, [typeEnv]);
 
   return (
     <MantineProvider>
