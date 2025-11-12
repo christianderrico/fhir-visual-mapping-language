@@ -41,7 +41,7 @@ export type Field = BaseField & (
   | { kind: "primitive"; value: Exclude<Datatype, Datatype.CODE> }
   | { kind: "backbone-element"; fields: Record<string, Field> }
   | { kind: "element"; fields: Record<string, Field> }
-  | { kind: "complex"; value: URL }
+  | { kind: "complex"; value: URL | string }
   | { kind: "reference"; value: string[] }
   | { kind: "alternatives"; value: Field[] }
 );

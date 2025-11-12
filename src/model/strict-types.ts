@@ -1,5 +1,7 @@
 export type URL = string & { readonly __brand: unique symbol };
 
+const urlRegex = /^https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&\/=]*)$/;
+
 export function url(unsafe: string): URL {
   const maybe = maybeUrl(unsafe);
   if (maybe !== undefined) {
@@ -9,9 +11,12 @@ export function url(unsafe: string): URL {
 }
 
 export function maybeUrl(unsafe: string): URL | undefined {
-  const urlRegex = /^https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&\/=]*)$/;
   if (urlRegex.test(unsafe)) {
     return unsafe as URL;
   }
   return undefined;
+}
+
+export function isUrl(unsafe: string): unsafe is URL {
+  return urlRegex.test(unsafe);
 }

@@ -145,7 +145,7 @@ function parseOne(type: any, metadata: Metadata): Field | undefined {
   if (type.code.charAt(0).match(/[A-Z]/)) {
     return {
       kind: "complex",
-      value: type.code as Datatype,
+      value: type.code as any,
       ...metadata,
     };
   }

@@ -1,4 +1,4 @@
-import { Text, Group, Stack } from "@mantine/core";
+import { Text, Group, Stack, Tooltip } from "@mantine/core";
 import {
   Handle,
   Position,
@@ -72,7 +72,14 @@ export const TargetNode: FC<TargetNodeProps> = (props) => {
           marginBottom: "0.5rem",
         }}
       >
-        <Group align="center" justify="start" gap="xs">
+        {"url" in typeDef && (
+          <Tooltip
+            target="#node-header"
+            label={typeDef.url}
+            position="top-start"
+          />
+        )}
+        <Group id="node-header" align="center" justify="start" gap="xs">
           <IconPackage size={16} />
           <Text component="span" size="sm">
             {typeDef.name}

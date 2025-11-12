@@ -19,7 +19,7 @@ export function isElementLike(field: Field): field is ElementLikeField {
 
 export const getNonPrimitiveType =
   (typeEnvironment: TypeEnvironment) =>
-  (typeName: URL): NonPrimitiveResource | undefined => {
+  (typeName: URL | string): NonPrimitiveResource | undefined => {
     const read = typeEnvironment.getType(typeName);
     if (read?.kind === "primitive-type") return undefined;
     return read;

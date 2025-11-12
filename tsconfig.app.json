@@ -14,7 +14,12 @@
     "verbatimModuleSyntax": true,
     "moduleDetection": "force",
     "noEmit": true,
-    "jsx": "react-jsx",
+
+     /* Aliases for generated code */
+    "baseUrl": ".",
+    "paths": {
+      "src-generated/*": ["src-generated/*"]
+    },   "jsx": "react-jsx",
 
     /* Linting */
     "strict": true,
@@ -23,5 +28,8 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src"]
+  "include": [
+    "src",
+    "src-generated"
+  ]
 }

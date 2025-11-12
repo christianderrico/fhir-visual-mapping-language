@@ -3,7 +3,7 @@ import { type URL, url as makeUrl } from "./strict-types";
 import type { TypeMap } from "./type-map";
 
 export interface TypeEnvironment {
-  hasType(url: URL): boolean;
+  hasType(url: URL | FhirDefinedType): boolean;
   getType(url: URL): Resource | undefined;
   getTypeFields(url: URL): Record<string, Field> | undefined;
   resolvePathType(url: URL, pathParts: string[]): Field | undefined;
