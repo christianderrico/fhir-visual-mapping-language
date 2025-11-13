@@ -4,7 +4,7 @@ import { useMemo, type FC } from "react";
 import classes from "./Node.module.css";
 import clsx from "clsx";
 import { IconPackage } from "@tabler/icons-react";
-import type { Field, Resource } from "../../model/fhir-types";
+import type { Field, Resource } from "src-common/fhir-types";
 import { useTypeEnvironment } from "../../hooks/useTypeEnvironment";
 import { getNonPrimitiveType } from "../../model/type-environment-utils";
 

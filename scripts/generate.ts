@@ -1,6 +1,8 @@
 import * as fs from "fs";
 import * as path from "path";
 import fetch from "node-fetch";
+import { parseStructureDefinition } from "../src-common/structure-definition-utils";
+
 
 interface FhirResource {
   resourceType: string;
@@ -17,8 +19,6 @@ interface StructureDefinition extends FhirResource {
   snapshot?: any;
 }
 
-// --- CONFIG --------------------------------------------------
-
 const CONFIG = {
   localModule: "hl7.fhir.r4.core",
   outputDir: path.join(".", "src-generated"),
@@ -31,8 +31,6 @@ const CONFIG = {
   },
   forceRegenerate: process.argv.includes("--force"), // optional CLI flag
 };
-
-// --- UTILITIES -----------------------------------------------
 
 function toLocalFilename(canonical: string): string {
   return canonical.replace("/", "-") + ".json";
@@ -56,8 +54,6 @@ async function loadFhirResource<T extends FhirResource>(canonical: string): Prom
   if (!res.ok) throw new Error(`Failed to fetch ${url}: ${res.statusText}`);
   return (await res.json()) as T;
 }
-
-// --- STRUCTURE DEFINITION REDUCER -----------------------------
 
 function reduceStructureDefinition(sd: StructureDefinition) {
   // ⚠️ Simplified example reducer — replace with your own
@@ -156,7 +152,7 @@ async function generate() {
     const canonical = `StructureDefinition/${rType}`;
     try {
       const sd = await loadFhirResource<StructureDefinition>(canonical);
-      const reduced = reduceStructureDefinition(sd);
+      const reduced = parseStructureDefinition(sd);
       fs.writeFileSync(outFile, JSON.stringify(reduced, null, 2));
       console.log(`✅ Reduced ${rType}`);
     } catch (err) {

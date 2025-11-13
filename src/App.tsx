@@ -7,15 +7,15 @@ import MotuPatient from "./MotuPatient.json";
 import {
   fetchStructureDefinition,
   parseStructureDefinition,
-} from "./model/structure-definition-utils";
-import type { Resource } from "./model/fhir-types";
+} from "src-common/structure-definition-utils";
+import type { Resource } from "src-common/fhir-types";
 import { TypeEnvironmentContext } from "./providers/TypeEnvironmentProvider";
 import {
   SimpleTypeEnvironment,
   type TypeEnvironment,
 } from "./model/type-environment";
 import type { TypeMap } from "./model/type-map";
-import type { URL } from "./model/strict-types";
+import type { URL } from "src-common/strict-types";
 
 const names = [
   "Identifier",

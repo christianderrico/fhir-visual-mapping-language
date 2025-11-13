@@ -18,8 +18,10 @@
      /* Aliases for generated code */
     "baseUrl": ".",
     "paths": {
+      "src-common/*": ["src-common/*"],
       "src-generated/*": ["src-generated/*"]
-    },   "jsx": "react-jsx",
+    },
+    "jsx": "react-jsx",
 
     /* Linting */
     "strict": true,
@@ -30,6 +32,7 @@
   },
   "include": [
     "src",
-    "src-generated"
+    "src-generated",
+    "src-common"
   ]
 }

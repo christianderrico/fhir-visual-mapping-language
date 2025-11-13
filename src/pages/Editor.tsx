@@ -33,7 +33,7 @@ import "./node.css";
 import { useTypeEnvironment } from "../hooks/useTypeEnvironment";
 import { getNonPrimitiveType as _getNonPrimitiveType } from "../model/type-environment-utils";
 import { PromptProvider, usePrompt } from "../providers/PromptProvider";
-import { url } from "../model/strict-types.ts";
+import { url } from "src-common/strict-types.ts";
 
 const nodeTypes = {
   sourceNode: SourceNode,

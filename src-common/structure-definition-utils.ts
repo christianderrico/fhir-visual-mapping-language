@@ -1,4 +1,4 @@
-import { Datatype, type Field, type Resource } from "src-common/fhir-typesypes";
+import { Datatype, type Field, type Resource } from "./fhir-types";
 import { isElementLike } from "../src/model/type-environment-utils";
 
 export class UndefinedSnapshotError extends Error {

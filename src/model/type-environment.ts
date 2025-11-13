@@ -1,5 +1,5 @@
-import type { Field, Resource } from "./fhir-types";
-import { type URL, url as makeUrl } from "./strict-types";
+import type { Field, Resource } from "src-common/fhir-types";
+import { type URL, url as makeUrl } from "src-common/strict-types";
 import type { TypeMap } from "./type-map";
 
 export interface TypeEnvironment {

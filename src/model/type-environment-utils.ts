@@ -1,5 +1,5 @@
-import type { Field, Resource } from "./fhir-types";
-import type { URL } from "./strict-types";
+import type { Field, Resource } from "src-common/fhir-types";
+import type { URL } from "src-common/strict-types";
 import type { TypeEnvironment } from "./type-environment";
 
 export type NonPrimitiveResource = Exclude<

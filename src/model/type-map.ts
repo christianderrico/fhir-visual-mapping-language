@@ -1,4 +1,4 @@
-import type { Resource } from "./fhir-types";
-import type { URL } from './strict-types.ts';
+import type { Resource } from "src-common/fhir-types.ts";
+import type { URL } from 'src-common/strict-types.ts';
 
 export type TypeMap = Record<URL, Resource>;

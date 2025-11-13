@@ -1,4 +1,4 @@
-import type { URL } from '../src/model/strict-types.tsstrict-types.ts';
+import type { URL } from './strict-types';
 
 /**
  * Represent a type corresponding to a `StructureDefinition` instance.
