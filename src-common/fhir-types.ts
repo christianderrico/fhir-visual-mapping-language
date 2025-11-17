@@ -1,4 +1,8 @@
+import type { FHIRResourceType, FHIRResourceTypes } from 'src-generated/FHIRResourceTypes';
 import type { URL } from './strict-types';
+import type { FHIRDataType } from 'src-generated/FHIRDataTypes';
+
+export type DefinedType = FHIRResourceType | FHIRDataType;
 
 /**
  * Represent a type corresponding to a `StructureDefinition` instance.
@@ -41,7 +45,7 @@ export type Field = BaseField & (
   | { kind: "primitive"; value: Exclude<Datatype, Datatype.CODE> }
   | { kind: "backbone-element"; fields: Record<string, Field> }
   | { kind: "element"; fields: Record<string, Field> }
-  | { kind: "complex"; value: URL | string }
+  | { kind: "complex"; value: URL }
   | { kind: "reference"; value: string[] }
   | { kind: "alternatives"; value: Field[] }
 );

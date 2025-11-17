@@ -47,10 +47,6 @@ function App() {
       .then((typeEnv) => setTypeEnv(typeEnv));
   }, [staticSds]);
 
-  useEffect(() => {
-    console.log(typeEnv);
-  }, [typeEnv]);
-
   return (
     <MantineProvider>
       {typeEnv && (

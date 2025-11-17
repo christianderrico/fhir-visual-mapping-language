@@ -3,7 +3,6 @@ import * as path from "path";
 import fetch from "node-fetch";
 import { parseStructureDefinition } from "../src-common/structure-definition-utils";
 
-
 interface FhirResource {
   resourceType: string;
   id?: string;
@@ -29,7 +28,7 @@ const CONFIG = {
     codeSystemDataTypes: "CodeSystem/data-types",
     codeSystemResourceTypes: "CodeSystem/resource-types",
   },
-  forceRegenerate: process.argv.includes("--force"), // optional CLI flag
+  forceRegenerate: process.argv.includes("--force"), 
 };
 
 function toLocalFilename(canonical: string): string {
@@ -41,42 +40,17 @@ async function loadFhirResource<T extends FhirResource>(canonical: string): Prom
   const localDir = path.resolve("node_modules", CONFIG.localModule);
   const localPath = path.join(localDir, filename);
 
-  // Try local first
   if (fs.existsSync(localPath)) {
     const raw = fs.readFileSync(localPath, "utf-8");
     return JSON.parse(raw) as T;
   }
 
-  // Fallback to HTTP
   const url = new URL(canonical, CONFIG.fhirBaseUrl).toString();
   console.log(`🌐 Fetching ${url}`);
   const res = await fetch(url, { headers: { Accept: "application/fhir+json" } });
   if (!res.ok) throw new Error(`Failed to fetch ${url}: ${res.statusText}`);
   return (await res.json()) as T;
 }
-
-function reduceStructureDefinition(sd: StructureDefinition) {
-  // ⚠️ Simplified example reducer — replace with your own
-  const elements =
-    sd.snapshot?.element?.map((e: any) => ({
-      id: e.id,
-      path: e.path,
-      type: e.type?.map((t: any) => t.code),
-      min: e.min,
-      max: e.max,
-    })) ?? [];
-
-  return {
-    id: sd.id,
-    name: sd.name,
-    kind: sd.kind,
-    type: sd.type,
-    url: sd.url,
-    elements,
-  };
-}
-
-// --- MAIN LOGIC ----------------------------------------------
 
 async function generate() {
   fs.mkdirSync(CONFIG.outputDir, { recursive: true });
@@ -107,8 +81,6 @@ async function generate() {
   const dataTypeCodes = codeMap.get(csDataTypes.url!) ?? [];
   const resourceTypeCodes = codeMap.get(csResourceTypes.url!) ?? [];
 
-  // --- Generate data types file --------------------------------
-
   const dataTypesTS = [
     `// Auto-generated from ${csDataTypes.url}`,
     `// Do not edit manually.`,
@@ -122,8 +94,6 @@ async function generate() {
   fs.writeFileSync(path.join(CONFIG.outputDir, "FHIRDataTypes.ts"), dataTypesTS);
   console.log(`✅ FHIRDataTypes.ts generated with ${dataTypeCodes.length} entries.`);
 
-  // --- Generate resource types file ----------------------------
-
   const resourceTypesTS = [
     `// Auto-generated from ${csResourceTypes.url}`,
     `// Do not edit manually.`,
@@ -136,8 +106,6 @@ async function generate() {
 
   fs.writeFileSync(path.join(CONFIG.outputDir, "FHIRResourceTypes.ts"), resourceTypesTS);
   console.log(`✅ FHIRResourceTypes.ts generated with ${resourceTypeCodes.length} entries.`);
-
-  // --- Generate metadata for each resource type ----------------
 
   console.log(`🧩 Generating metadata for each StructureDefinition...`);
 

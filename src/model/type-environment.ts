@@ -1,27 +1,29 @@
-import type { Field, Resource } from "src-common/fhir-types";
+import type { DefinedType, Field, Resource } from "src-common/fhir-types";
 import { type URL, url as makeUrl } from "src-common/strict-types";
 import type { TypeMap } from "./type-map";
 
+export type URLOrDefinedType = URL | DefinedType;
+
 export interface TypeEnvironment {
-  hasType(url: URL | FhirDefinedType): boolean;
-  getType(url: URL): Resource | undefined;
-  getTypeFields(url: URL): Record<string, Field> | undefined;
-  resolvePathType(url: URL, pathParts: string[]): Field | undefined;
-  getImplementations(url: URL): Resource[];
+  hasType(url: URLOrDefinedType): boolean;
+  getType(url: URLOrDefinedType): Resource | undefined;
+  getTypeFields(url: URLOrDefinedType): Record<string, Field> | undefined;
+  resolvePathType(url: URLOrDefinedType, pathParts: string[]): Field | undefined;
+  getImplementations(url: URLOrDefinedType): Resource[];
 }
 
 export class SimpleTypeEnvironment implements TypeEnvironment {
   constructor(private typeMap: TypeMap) {}
 
-  hasType(url: URL): boolean {
+  hasType(url: URLOrDefinedType): boolean {
     return this.typeMap[url] !== undefined;
   }
 
-  getType(url: URL): Resource | undefined {
+  getType(url: URLOrDefinedType): Resource | undefined {
     return this.typeMap[url];
   }
 
-  getTypeFields(url: URL): Record<string, Field> | undefined {
+  getTypeFields(url: URLOrDefinedType): Record<string, Field> | undefined {
     const type = this.getType(url);
     if (type !== undefined && "fields" in type!) {
       return type.fields;
@@ -29,7 +31,7 @@ export class SimpleTypeEnvironment implements TypeEnvironment {
     return undefined;
   }
 
-  resolvePathType(url: URL, pathParts: string[]): Field | undefined {
+  resolvePathType(url: URLOrDefinedType, pathParts: string[]): Field | undefined {
     const [head, ...tail] = pathParts as [string, ...string[]];
     const type = this.getType(url);
 
@@ -45,7 +47,7 @@ export class SimpleTypeEnvironment implements TypeEnvironment {
     return this.resolveTail(type.fields[head], tail);
   }
 
-  getImplementations(url: URL): Resource[] {
+  getImplementations(url: URLOrDefinedType): Resource[] {
     // TODO: hold these data somewhere, likely in constructor
     // throw new Error("not implemented yet");
     return ["Bundle", "Identifier", "Patient"].map((name) => ({
