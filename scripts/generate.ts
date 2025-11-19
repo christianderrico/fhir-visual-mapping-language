@@ -9,6 +9,7 @@ interface FhirResource {
   url?: string;
   concept?: Array<{ code: string }>;
   compose?: { include?: Array<{ system: string }> };
+  baseDefinition?: URL
 }
 
 interface StructureDefinition extends FhirResource {

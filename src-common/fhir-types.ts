@@ -26,6 +26,8 @@ interface BaseResource {
    */
   title: string;
   abstract: boolean;
+  derivation?: string;
+  baseDefinition?: URL
 }
 
 export function isResource(obj: any): obj is Resource {

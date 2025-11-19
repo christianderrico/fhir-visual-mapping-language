@@ -17,7 +17,7 @@ export async function fetchStructureDefinition(
 export function parseStructureDefinition(
   structureDefinition: any,
 ): Resource | undefined {
-  const { kind, name, type, abstract, url, title } = structureDefinition;
+  const { kind, name, type, abstract, url, title, derivation, baseDefinition } = structureDefinition;
 
   // Skip profiles by comparing their name with the type (heuristic)
   if (type !== name) return undefined;
@@ -35,6 +35,8 @@ export function parseStructureDefinition(
       kind: "primitive-type",
       title,
       name,
+      derivation,
+      baseDefinition,
       value: type as Datatype,
       abstract: false,
     };
@@ -83,6 +85,8 @@ export function parseStructureDefinition(
     fields,
     name,
     abstract,
+    derivation,
+    baseDefinition
   };
 }
 
