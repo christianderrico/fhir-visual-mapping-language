@@ -33,7 +33,7 @@ import "./node.css";
 import { useTypeEnvironment } from "../hooks/useTypeEnvironment";
 import { getNonPrimitiveType as _getNonPrimitiveType } from "../model/type-environment-utils";
 import { PromptProvider, usePrompt } from "../providers/PromptProvider";
-import { url } from "src-common/strict-types.ts";
+import { url, type URL } from "src-common/strict-types.ts";
 
 const nodeTypes = {
   sourceNode: SourceNode,
@@ -43,7 +43,7 @@ const nodeTypes = {
 
 export const FhirMappingFlow: FC = () => {
   const typeEnv = useTypeEnvironment();
-  const { askMulti, askSelect, askText, modalProps } = usePrompt();
+  const { askSelect, askText } = usePrompt();
 
   const getNonPrimitive = useCallback(_getNonPrimitiveType(typeEnv), [
     _getNonPrimitiveType,
@@ -190,9 +190,9 @@ export const FhirMappingFlow: FC = () => {
           const abstractField = getNonPrimitive(field.value)!;
           const candidates = typeEnv
             .getImplementations(abstractField?.name)
-            .map((x) => x.name);
+            .map((x) => x.url);
 
-          const choice = await askSelect(candidates);
+          const choice = (await askSelect(candidates)) as URL | undefined;
           if (choice) {
             const choiceType = getNonPrimitive(choice);
             return createNewNode({

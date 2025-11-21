@@ -218,7 +218,7 @@ function parseOne(type: any, metadata: Metadata): Field | undefined {
       kind: "primitive",
       value: type.code as Datatype,
       ...metadata,
-    };
+    } as any;
   }
   if (type.code.charAt(0).match(/[A-Z]/)) {
     return {

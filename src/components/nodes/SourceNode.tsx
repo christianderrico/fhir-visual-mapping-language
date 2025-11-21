@@ -13,7 +13,7 @@ const Fields: FC<{
 }> = ({ fields }) => {
   return (
     <Stack gap="xs">
-      {Object.entries(fields).map(([name, field]) => (
+      {Object.entries(fields).map(([name]) => (
         <div
           key={name}
           className={classes.nestedField}

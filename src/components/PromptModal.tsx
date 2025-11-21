@@ -6,9 +6,7 @@ import {
   Group,
   rem,
   Stack,
-  FocusTrap,
 } from "@mantine/core";
-import { useCallbackRef } from "@mantine/hooks";
 import { useCallback, useState } from "react";
 
 export type PromptType =
