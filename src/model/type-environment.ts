@@ -1,6 +1,8 @@
 import type { DefinedType, Field, Resource } from "src-common/fhir-types";
-import { type URL, url as makeUrl } from "src-common/strict-types";
+import { type URL } from "src-common/strict-types";
 import type { TypeMap } from "./type-map";
+import { SimpleTypeTree, type TypeTree } from "./type-tree";
+import { partition } from "../utils/functions"
 
 export type URLOrDefinedType = URL | DefinedType;
 
@@ -8,19 +10,39 @@ export interface TypeEnvironment {
   hasType(url: URLOrDefinedType): boolean;
   getType(url: URLOrDefinedType): Resource | undefined;
   getTypeFields(url: URLOrDefinedType): Record<string, Field> | undefined;
-  resolvePathType(url: URLOrDefinedType, pathParts: string[]): Field | undefined;
+  resolvePathType(
+    url: URLOrDefinedType,
+    pathParts: string[],
+  ): Field | undefined;
   getImplementations(url: URLOrDefinedType): Resource[];
 }
 
 export class SimpleTypeEnvironment implements TypeEnvironment {
-  constructor(private typeMap: TypeMap) {}
+  private resourceTypeTree: TypeTree;
+  private elementTypeTree: TypeTree;
+
+  constructor(private typeMap: TypeMap) {
+    const entries = Object.entries(typeMap);
+
+    const [resourceEntries, elementEntries] = partition(
+      entries,
+      ([_, t]) => t.kind === "resource",
+    );
+
+    this.resourceTypeTree = new SimpleTypeTree(
+      Object.fromEntries(resourceEntries),
+    );
+    this.elementTypeTree = new SimpleTypeTree(
+      Object.fromEntries(elementEntries),
+    );
+  }
 
   hasType(url: URLOrDefinedType): boolean {
-    return this.typeMap[url] !== undefined;
+    return this.typeMap[url as URL] !== undefined;
   }
 
   getType(url: URLOrDefinedType): Resource | undefined {
-    return this.typeMap[url];
+    return this.typeMap[url as URL];
   }
 
   getTypeFields(url: URLOrDefinedType): Record<string, Field> | undefined {
@@ -31,7 +53,10 @@ export class SimpleTypeEnvironment implements TypeEnvironment {
     return undefined;
   }
 
-  resolvePathType(url: URLOrDefinedType, pathParts: string[]): Field | undefined {
+  resolvePathType(
+    url: URLOrDefinedType,
+    pathParts: string[],
+  ): Field | undefined {
     const [head, ...tail] = pathParts as [string, ...string[]];
     const type = this.getType(url);
 
@@ -48,16 +73,13 @@ export class SimpleTypeEnvironment implements TypeEnvironment {
   }
 
   getImplementations(url: URLOrDefinedType): Resource[] {
-    // TODO: hold these data somewhere, likely in constructor
-    // throw new Error("not implemented yet");
-    return ["Bundle", "Identifier", "Patient"].map((name) => ({
-      url: makeUrl(`https://hl7.org/fhir/${name}`),
-      kind: "resource",
-      name,
-      title: name,
-      fields: {},
-      abstract: false,
-    }));
+    return (
+      this.resourceTypeTree.containsNode(url)
+        ? this.resourceTypeTree
+        : this.elementTypeTree
+    )
+      .getDescendants(url)
+      .map((tNode) => tNode.value);
   }
 
   private resolveTail(field: Field, pathParts: string[]): Field | undefined {

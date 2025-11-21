@@ -1,4 +1,4 @@
-import type { FHIRResourceType, FHIRResourceTypes } from 'src-generated/FHIRResourceTypes';
+import type { FHIRResourceType } from 'src-generated/FHIRResourceTypes';
 import type { URL } from './strict-types';
 import type { FHIRDataType } from 'src-generated/FHIRDataTypes';
 
@@ -53,7 +53,7 @@ export type Field = BaseField & (
 );
 
 interface BaseField {
-  name: string; path: string; min: number; max: number | "*" 
+  url: URL, name: string; path: string; min: number; max: number | "*" 
 }
 
 export function isField(obj: any): obj is Field {
