@@ -1,5 +1,6 @@
 import { Datatype, type Field, type Resource } from "./fhir-types";
 import { isElementLike } from "../src/model/type-environment-utils";
+import process from "process";
 
 export class UndefinedSnapshotError extends Error {
   constructor(name: string) {

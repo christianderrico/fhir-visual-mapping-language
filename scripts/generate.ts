@@ -53,6 +53,27 @@ async function loadFhirResource<T extends FhirResource>(canonical: string): Prom
   return (await res.json()) as T;
 }
 
+async function writeStructureDefinition(typeCodes: string[]){
+  for (const type of typeCodes) {
+    const outFile = path.join(CONFIG.cacheDir, `${type}.json`);
+
+    if (!CONFIG.forceRegenerate && fs.existsSync(outFile)) {
+      console.log(`⏩ Skipping ${type} (cached)`);
+      continue;
+    }
+
+    const canonical = `StructureDefinition/${type}`;
+    try {
+      const sd = await loadFhirResource<StructureDefinition>(canonical);
+      const reduced = parseStructureDefinition(sd);
+      fs.writeFileSync(outFile, JSON.stringify(reduced, null, 2));
+      console.log(`✅ Reduced ${type}`);
+    } catch (err) {
+      console.warn(`⚠️ Failed to process ${type}: ${err}`);
+    }
+  }
+}
+
 async function generate() {
   fs.mkdirSync(CONFIG.outputDir, { recursive: true });
   fs.mkdirSync(CONFIG.cacheDir, { recursive: true });
@@ -109,25 +130,8 @@ async function generate() {
   console.log(`✅ FHIRResourceTypes.ts generated with ${resourceTypeCodes.length} entries.`);
 
   console.log(`🧩 Generating metadata for each StructureDefinition...`);
-
-  for (const rType of resourceTypeCodes) {
-    const outFile = path.join(CONFIG.cacheDir, `${rType}.json`);
-
-    if (!CONFIG.forceRegenerate && fs.existsSync(outFile)) {
-      console.log(`⏩ Skipping ${rType} (cached)`);
-      continue;
-    }
-
-    const canonical = `StructureDefinition/${rType}`;
-    try {
-      const sd = await loadFhirResource<StructureDefinition>(canonical);
-      const reduced = parseStructureDefinition(sd);
-      fs.writeFileSync(outFile, JSON.stringify(reduced, null, 2));
-      console.log(`✅ Reduced ${rType}`);
-    } catch (err) {
-      console.warn(`⚠️ Failed to process ${rType}: ${err}`);
-    }
-  }
+  const itemsResourceTypeCodes = resourceTypeCodes.concat(dataTypeCodes)
+  await writeStructureDefinition(itemsResourceTypeCodes)
 
   console.log(`🎉 Done. Metadata in ${CONFIG.cacheDir}`);
 }
