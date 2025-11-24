@@ -1,7 +1,7 @@
-import type { DefinedType, Resource } from "src-common/fhir-types";
+import type { Resource } from "src-common/fhir-types";
 import type { TypeMap } from "./type-map";
 import type { URLOrDefinedType } from "./type-environment";
-import { isUrl, type URL } from "src-common/strict-types";
+import { isUrl } from "src-common/strict-types";
 
 export interface TypeNode {
   value: Resource;
