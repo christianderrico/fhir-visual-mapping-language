@@ -1,6 +1,6 @@
 import { Datatype, type Field, type Resource } from "./fhir-types";
 import { isElementLike } from "../src/model/type-environment-utils";
-import process from "process";
+import type { URL } from "./strict-types";
 
 export class UndefinedSnapshotError extends Error {
   constructor(name: string) {
@@ -17,11 +17,13 @@ export async function fetchStructureDefinition(
 
 export function parseStructureDefinition(
   structureDefinition: any,
+  addInfo?: Record<URL, any>,
 ): Resource | undefined {
-  const { kind, name, type, abstract, url, title, derivation, baseDefinition } = structureDefinition;
+  const { kind, name, type, abstract, url, title, derivation, baseDefinition } =
+    structureDefinition;
 
   // Skip profiles by comparing their name with the type (heuristic)
-  if (type !== name) return undefined;
+  if (!name.includes(type)) return undefined;
 
   const snapshot =
     structureDefinition.snapshot ?? structureDefinition.differential;
@@ -46,7 +48,7 @@ export function parseStructureDefinition(
   const fields = {} as Record<string, Field>;
 
   for (const elem of snapshot.element) {
-    const { path, min, max, type } = elem;
+    const { path, min, max, type, binding } = elem;
 
     const parts = path.split(".");
     if (parts.length === 1) continue;
@@ -74,6 +76,24 @@ export function parseStructureDefinition(
       min,
       max: max === "*" ? "*" : parseInt(max),
     });
+
+    if (field?.kind === "primitive" && field.value === "code") {
+      const key = binding?.valueSet?.split("|")?.[0];
+      if (addInfo && key && addInfo[key]) {
+        if ("compose" in addInfo[key])
+          field.options = addInfo[key].compose.include
+            .map((v: { system: URL }) => addInfo[v.system])
+            .flatMap(
+              (map: any) =>
+                map?.concept?.map((c: any) => ({
+                  code: c.code,
+                  display: c.display,
+                  definition: c.definition,
+                })) ?? [],
+            );
+      }
+    }
+
     if (field !== undefined) {
       cursor[last] = field;
     }
@@ -87,7 +107,7 @@ export function parseStructureDefinition(
     name,
     abstract,
     derivation,
-    baseDefinition
+    baseDefinition,
   };
 }
 
