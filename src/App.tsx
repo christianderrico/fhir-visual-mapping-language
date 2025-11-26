@@ -10,9 +10,8 @@ import {
   type TypeEnvironment,
 } from "./model/type-environment";
 
-const modules = import.meta.glob("../src-generated/metadata/*.json", {
-  eager: true,
-});
+const modules = import.meta.glob("../src-generated/metadata/*.json", {eager: true});
+const sets = import.meta.glob("../src-generated/valueset-metadata/*.json", {eager: true});
 
 function App() {
   const [typeEnv, setTypeEnv] = useState<TypeEnvironment | null>(null);
@@ -23,7 +22,7 @@ function App() {
         return [(obj as Resource).url, obj] as [string, Resource];
       }),
     );
-    setTypeEnv(new SimpleTypeEnvironment(typeMap));
+    setTypeEnv(new SimpleTypeEnvironment(typeMap, sets));
   }, []);
 
   return (

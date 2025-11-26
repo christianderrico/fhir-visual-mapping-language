@@ -1,6 +1,11 @@
 import * as fs from "fs";
 import * as path from "path";
-import { parseStructureDefinition } from "../src-common/structure-definition-utils";
+import {
+  getCodeSystem,
+  getValuesetsUrl,
+  parseStructureDefinition,
+  parseValuesetMap,
+} from "../src-common/structure-definition-utils";
 import { url, type URL } from "../src-common/strict-types";
 
 interface FhirResource {
@@ -8,10 +13,6 @@ interface FhirResource {
   id?: string;
   url?: string;
   concept?: Array<{ code: string }>;
-  compose?: {
-    include?: Array<{ system: string }>;
-    exclude?: Array<{ system: string }>;
-  };
   baseDefinition?: URL;
 }
 
@@ -26,6 +27,7 @@ const CONFIG = {
   localModule: "hl7.fhir.r4.core",
   outputDir: path.join(".", "src-generated"),
   cacheDir: path.join(".", "src-generated", "metadata"),
+  cacheValueSetDir: path.join(".", "src-generated", "valueset-metadata"),
   fhirBaseUrl: "https://hl7.org/fhir/R4/",
   resources: {
     valueSetDefinedTypes: "ValueSet/defined-types",
@@ -38,16 +40,6 @@ const CONFIG = {
 function toLocalFilename(canonical: string): string {
   const last_two_elements = -2;
   return canonical.split("/").slice(last_two_elements).join("-") + ".json";
-}
-
-function getValuesetsUrl(sd: StructureDefinition): string[] {
-  return (sd.snapshot?.element ?? [])
-    .flatMap((el: { binding: any }) => (el.binding ? [el.binding] : [])) // tieni solo gli elementi con binding
-    .filter(
-      (b: { strength: string; valueSet: URL }) =>
-        b.strength === "required" || b.strength === "extensible",
-    )
-    .map((b: { valueSet: URL }) => b.valueSet!.split("|")[0]);
 }
 
 async function loadFhirResource<T extends FhirResource>(
@@ -79,59 +71,10 @@ async function loadFhirResource<T extends FhirResource>(
   return (await res.json()) as T;
 }
 
-async function writeStructureDefinition(typeCodes: string[]) {
-  for (const type of typeCodes) {
-    const outFile = path.join(CONFIG.cacheDir, `${type}.json`);
-
-    if (!CONFIG.forceRegenerate && fs.existsSync(outFile)) {
-      console.log(`⏩ Skipping ${type} (cached)`);
-      continue;
-    }
-
-    const canonical = `StructureDefinition/${type}`;
-    try {
-      const sd = await loadFhirResource<StructureDefinition>(canonical);
-      const vsUrls = await Promise.all(
-        getValuesetsUrl(sd)
-        .filter(vs => vs.includes("hl7.org"))
-        .map(loadFhirResource<StructureDefinition>),
-      );
-      const codeSystems = await Promise.all(
-        vsUrls
-          .map(getCodeSystem)
-          .flat()
-          .filter((cs) => cs.includes("hl7.org"))
-          .map(s => s.replace("fhir/", "fhir/codesystem/"))
-          .map(loadFhirResource<StructureDefinition>),
-      );
-
-      const codes: Record<URL, StructureDefinition> = Object.fromEntries(
-        [...vsUrls, ...codeSystems].map((sd) => [sd.url, sd]),
-      );
-      const reduced = parseStructureDefinition(sd, codes);
-      fs.writeFileSync(outFile, JSON.stringify(reduced, null, 2));
-      console.log(`✅ Reduced ${type}`);
-    } catch (err) {
-      console.warn(`⚠️ Failed to process ${type}: ${err}`);
-    }
-  }
-}
-
-function getCodeSystem(vs: FhirResource): string[] {
-  const getSystems: (obj?: any) => Set<string> = (obj) =>
-    new Set(obj?.map((i: any) => i.system));
-  const toExclude: Set<string> = getSystems(vs.compose?.exclude);
-  const toInclude: Set<string> = getSystems(vs.compose?.include);
-  return (
-    [...toInclude.values()]
-      .filter((e) => !toExclude.has(e))
-      .filter((system): system is URL => system !== undefined) ?? []
-  );
-}
-
 async function generate() {
   fs.mkdirSync(CONFIG.outputDir, { recursive: true });
   fs.mkdirSync(CONFIG.cacheDir, { recursive: true });
+  fs.mkdirSync(CONFIG.cacheValueSetDir, { recursive: true });
 
   const valueSet = await loadFhirResource<FhirResource>(
     CONFIG.fhirBaseUrl + CONFIG.resources.valueSetDefinedTypes,
@@ -202,6 +145,51 @@ async function generate() {
   await writeStructureDefinition(itemsResourceTypeCodes);
 
   console.log(`🎉 Done. Metadata in ${CONFIG.cacheDir}`);
+}
+
+async function writeStructureDefinition(typeCodes: string[]) {
+  const codes: Record<URL, StructureDefinition> = {};
+  for (const type of typeCodes) {
+    const outFile = path.join(CONFIG.cacheDir, `${type}.json`);
+
+    if (!CONFIG.forceRegenerate && fs.existsSync(outFile)) {
+      console.log(`⏩ Skipping ${type} (cached)`);
+      continue;
+    }
+
+    const canonical = `StructureDefinition/${type}`;
+
+    try {
+      const sd = await loadFhirResource<StructureDefinition>(canonical);
+      const reduced = parseStructureDefinition(sd);
+      const vsUrls = await Promise.all(
+        getValuesetsUrl(reduced)
+          .filter((vs) => vs.includes("hl7.org"))
+          .map(loadFhirResource<StructureDefinition>),
+      );
+      const codeSystems = await Promise.all(
+        vsUrls
+          .flatMap(getCodeSystem)
+          .filter((cs) => cs.includes("hl7.org"))
+          .map((s) => s.replace("fhir/", "fhir/codesystem/"))
+          .map(loadFhirResource<StructureDefinition>),
+      );
+
+      [...vsUrls, ...codeSystems].forEach((sd) => {
+        if (sd.url) codes[url(sd.url)] = sd;
+      });
+
+      fs.writeFileSync(outFile, JSON.stringify(reduced, null, 2));
+      console.log(`✅ Reduced ${type}`);
+    } catch (err) {
+      console.warn(`⚠️ Failed to process ${type}: ${err}`);
+    }
+  }
+  const reducedSet = parseValuesetMap(codes);
+  reducedSet.forEach((reduced) => {
+    const outFile = path.join(CONFIG.cacheValueSetDir, `${reduced.id}.json`);
+    fs.writeFileSync(outFile, JSON.stringify(reduced, null, 2));
+  });
 }
 
 generate().catch((err) => {

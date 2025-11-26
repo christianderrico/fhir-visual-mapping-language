@@ -1,6 +1,6 @@
-import type { FHIRResourceType } from 'src-generated/FHIRResourceTypes';
-import type { URL } from './strict-types';
-import type { FHIRDataType } from 'src-generated/FHIRDataTypes';
+import type { FHIRResourceType } from "src-generated/FHIRResourceTypes";
+import type { URL } from "./strict-types";
+import type { FHIRDataType } from "src-generated/FHIRDataTypes";
 
 export type DefinedType = FHIRResourceType | FHIRDataType;
 
@@ -8,17 +8,18 @@ export type DefinedType = FHIRResourceType | FHIRDataType;
  * Represent a type corresponding to a `StructureDefinition` instance.
  * @note `kind` is corresponding to `StructureDefinition['type']`
  */
-export type Resource = BaseResource & (
-  | { kind: "resource"; fields: Record<string, Field> }
-  | { kind: "complex-type"; fields: Record<string, Field> }
-  | { kind: "logical"; fields: Record<string, Field> }
-  | { kind: "primitive-type"; value: Datatype }
-);
+export type Resource = BaseResource &
+  (
+    | { kind: "resource"; fields: Record<string, Field> }
+    | { kind: "complex-type"; fields: Record<string, Field> }
+    | { kind: "logical"; fields: Record<string, Field> }
+    | { kind: "primitive-type"; value: Datatype }
+  );
 
 interface BaseResource {
   url: URL;
   /**
-   * Computer-friendly name 
+   * Computer-friendly name
    */
   name: string;
   /**
@@ -27,7 +28,7 @@ interface BaseResource {
   title: string;
   abstract: boolean;
   derivation?: string;
-  baseDefinition?: URL
+  baseDefinition?: URL;
 }
 
 export function isResource(obj: any): obj is Resource {
@@ -42,18 +43,23 @@ export function isResource(obj: any): obj is Resource {
 /**
  * Represents all the possible values that a field of a `Type` can have.
  */
-export type Field = BaseField & (
-  | { kind: "primitive"; value: Datatype.CODE; options: string[] }
-  | { kind: "primitive"; value: Exclude<Datatype, Datatype.CODE> }
-  | { kind: "backbone-element"; fields: Record<string, Field> }
-  | { kind: "element"; fields: Record<string, Field> }
-  | { kind: "complex"; value: URL }
-  | { kind: "reference"; value: string[] }
-  | { kind: "alternatives"; value: Field[] }
-);
+export type Field = BaseField &
+  (
+    | { kind: "primitive"; value: Datatype.CODE; valueSet?: {url?: URL, strength: string} }
+    | { kind: "primitive"; value: Exclude<Datatype, Datatype.CODE> }
+    | { kind: "backbone-element"; fields: Record<string, Field> }
+    | { kind: "element"; fields: Record<string, Field> }
+    | { kind: "complex"; value: URL }
+    | { kind: "reference"; value: string[] }
+    | { kind: "alternatives"; value: Field[] }
+  );
 
 interface BaseField {
-  url: URL, name: string; path: string; min: number; max: number | "*" 
+  url: URL;
+  name: string;
+  path: string;
+  min: number;
+  max: number | "*";
 }
 
 export function isField(obj: any): obj is Field {
@@ -100,4 +106,3 @@ export enum Datatype {
 export function isDatatype(obj: any): obj is Datatype {
   return Object.values(Datatype).includes(obj);
 }
-

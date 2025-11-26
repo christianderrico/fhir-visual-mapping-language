@@ -2,7 +2,8 @@ import type { DefinedType, Field, Resource } from "src-common/fhir-types";
 import { type URL } from "src-common/strict-types";
 import type { TypeMap } from "./type-map";
 import { SimpleTypeTree, type TypeTree } from "./type-tree";
-import { partition } from "../utils/functions"
+import { partition } from "../utils/functions";
+import type { ValueSet, ValueSetMap } from "src-common/valueset-types";
 
 export type URLOrDefinedType = URL | DefinedType;
 
@@ -15,14 +16,21 @@ export interface TypeEnvironment {
     pathParts: string[],
   ): Field | undefined;
   getImplementations(url: URLOrDefinedType): Resource[];
+  getValueSet(url: URL): ValueSet | undefined;
+  getOptions(url: URL): Record<URL, string[]>;
 }
 
 export class SimpleTypeEnvironment implements TypeEnvironment {
   private resourceTypeTree: TypeTree;
   private elementTypeTree: TypeTree;
 
-  constructor(private typeMap: TypeMap) {
+  constructor(
+    private typeMap: TypeMap,
+    private valueSets: ValueSetMap,
+  ) {
     const entries = Object.entries(typeMap);
+
+    console.log(valueSets);
 
     const [resourceEntries, elementEntries] = partition(
       entries,
@@ -35,6 +43,17 @@ export class SimpleTypeEnvironment implements TypeEnvironment {
     this.elementTypeTree = new SimpleTypeTree(
       Object.fromEntries(elementEntries),
     );
+  }
+  getOptions(url: URL): Record<URL, string[]> {
+    return Object.fromEntries(
+      this.getValueSet(url)?.include.map(
+        (v) => [v.system, v.concept.map((c) => c.code)] as const,
+      ) ?? [],
+    );
+  }
+
+  getValueSet(url: URL): ValueSet | undefined {
+    return this.valueSets[url];
   }
 
   hasType(url: URLOrDefinedType): boolean {

@@ -1,6 +1,11 @@
 import { Datatype, type Field, type Resource } from "./fhir-types";
 import { isElementLike } from "../src/model/type-environment-utils";
-import type { URL } from "./strict-types";
+import { url, type URL } from "./strict-types";
+import type {
+  ValueSet,
+  ValueSetConcept,
+  ValueSetEntry,
+} from "./valueset-types";
 
 export class UndefinedSnapshotError extends Error {
   constructor(name: string) {
@@ -15,16 +20,75 @@ export async function fetchStructureDefinition(
   return parseStructureDefinition(sd);
 }
 
+function isCodeField(
+  field: Field | undefined,
+): field is Field & { kind: "primitive"; value: Datatype.CODE } {
+  return !!field && field.kind === "primitive" && field.value === "code";
+}
+
+export function getValuesetsUrl(resource: Resource | undefined): URL[] {
+  if (!resource || resource.kind === "primitive-type") return [];
+  else
+    return Object.values(resource.fields)
+      .filter(isCodeField)
+      .map((f) => f.valueSet?.url)
+      .filter((url): url is URL => url !== undefined && url !== null);
+}
+
+export function getCodeSystem(vs: any): URL[] {
+  const getSystems: (obj?: any) => Set<string> = (obj) =>
+    new Set(obj?.map((i: any) => i.system));
+  const toExclude: Set<string> = getSystems(vs.compose?.exclude);
+  const toInclude: Set<string> = getSystems(vs.compose?.include);
+  return (
+    [...toInclude.values()]
+      .filter((e) => !toExclude.has(e))
+      .filter((system): system is URL => system !== undefined) ?? []
+  );
+}
+
+function _getValuesetsUrl(binding: {
+  strength: string;
+  valueSet: URL;
+}): URL | undefined {
+  switch (binding.strength) {
+    case "required":
+    case "extensible":
+    case "preferred":
+      return url(binding.valueSet.split("|")[0]);
+  }
+}
+
+export function parseValuesetMap(codes: Record<URL, any>): ValueSet[] {
+  return Object.entries(codes)
+    .filter(([_, sd]) => sd.resourceType === "ValueSet")
+    .map(([_, _structuredDefinition]) => {
+      const { id, url, compose } = _structuredDefinition;
+      const include: ValueSetEntry[] = compose.include.map(
+        (v: ValueSetEntry) => {
+          return {
+            system: v.system,
+            concept:
+              v.concept ?? codes[v.system]?.concept,
+          };
+        },
+      );
+      return {
+        id,
+        url,
+        include,
+      };
+    });
+}
+
 export function parseStructureDefinition(
   structureDefinition: any,
-  addInfo?: Record<URL, any>,
 ): Resource | undefined {
   const { kind, name, type, abstract, url, title, derivation, baseDefinition } =
     structureDefinition;
 
   // Skip profiles by comparing their name with the type (heuristic)
   if (!name.includes(type)) return undefined;
-
   const snapshot =
     structureDefinition.snapshot ?? structureDefinition.differential;
 
@@ -77,22 +141,11 @@ export function parseStructureDefinition(
       max: max === "*" ? "*" : parseInt(max),
     });
 
-    if (field?.kind === "primitive" && field.value === "code") {
-      const key = binding?.valueSet?.split("|")?.[0];
-      if (addInfo && key && addInfo[key]) {
-        if ("compose" in addInfo[key])
-          field.options = addInfo[key].compose.include
-            .map((v: { system: URL }) => addInfo[v.system])
-            .flatMap(
-              (map: any) =>
-                map?.concept?.map((c: any) => ({
-                  code: c.code,
-                  display: c.display,
-                  definition: c.definition,
-                })) ?? [],
-            );
-      }
-    }
+    if (binding && isCodeField(field))
+      field.valueSet = {
+        url: _getValuesetsUrl(binding),
+        strength: binding.strength,
+      };
 
     if (field !== undefined) {
       cursor[last] = field;
