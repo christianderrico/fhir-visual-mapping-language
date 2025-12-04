@@ -7,6 +7,9 @@ import {
   parseValuesetMap,
 } from "../src-common/structure-definition-utils";
 import { url, type URL } from "../src-common/strict-types";
+import { readdir } from "fs/promises";
+import type { Resource } from "../src-common/fhir-types";
+import { config } from "process";
 
 interface FhirResource {
   resourceType: string;
@@ -69,6 +72,17 @@ async function loadFhirResource<T extends FhirResource>(
   if (!res.ok)
     throw new Error(`Failed to fetch ${canonical}: ${res.statusText}`);
   return (await res.json()) as T;
+}
+
+async function getFilesWithPattern(dir: string, pattern: string) {
+  const regex = new RegExp(
+    "^" + pattern.replace(/\./g, "\\.").replace(/\*/g, ".*") + "$",
+  );
+
+  const files = await readdir(dir);
+  return files
+    .filter((file) => regex.test(file))
+    .map((file) => path.join(dir, file));
 }
 
 async function generate() {
@@ -148,7 +162,6 @@ async function generate() {
 }
 
 async function writeStructureDefinition(typeCodes: string[]) {
-  const codes: Record<URL, StructureDefinition> = {};
   for (const type of typeCodes) {
     const outFile = path.join(CONFIG.cacheDir, `${type}.json`);
 
@@ -162,22 +175,6 @@ async function writeStructureDefinition(typeCodes: string[]) {
     try {
       const sd = await loadFhirResource<StructureDefinition>(canonical);
       const reduced = parseStructureDefinition(sd);
-      const vsUrls = await Promise.all(
-        getValuesetsUrl(reduced)
-          .filter((vs) => vs.includes("hl7.org"))
-          .map(loadFhirResource<StructureDefinition>),
-      );
-      const codeSystems = await Promise.all(
-        vsUrls
-          .flatMap(getCodeSystem)
-          .filter((cs) => cs.includes("hl7.org"))
-          .map((s) => s.replace("fhir/", "fhir/codesystem/"))
-          .map(loadFhirResource<StructureDefinition>),
-      );
-
-      [...vsUrls, ...codeSystems].forEach((sd) => {
-        if (sd.url) codes[url(sd.url)] = sd;
-      });
 
       fs.writeFileSync(outFile, JSON.stringify(reduced, null, 2));
       console.log(`✅ Reduced ${type}`);
@@ -185,11 +182,39 @@ async function writeStructureDefinition(typeCodes: string[]) {
       console.warn(`⚠️ Failed to process ${type}: ${err}`);
     }
   }
-  const reducedSet = parseValuesetMap(codes);
-  reducedSet.forEach((reduced) => {
-    const outFile = path.join(CONFIG.cacheValueSetDir, `${reduced.id}.json`);
-    fs.writeFileSync(outFile, JSON.stringify(reduced, null, 2));
-  });
+
+  if (fs.readdirSync(CONFIG.cacheValueSetDir).length == 0) {
+    const files = (
+      await Promise.all(
+        ["ValueSet-*.json", "CodeSystem-*.json"].map((fname) =>
+          getFilesWithPattern(
+            path.resolve("node_modules", CONFIG.localModule),
+            fname,
+          ),
+        ),
+      )
+    )
+      .flat()
+      .map((f) => {
+        const names = f.split("\\");
+        return names
+          .slice(names.length - 1)
+          .join("")
+          .replace(".json", "");
+      });
+
+    const valuesets = await Promise.all(
+      files.map(loadFhirResource<FhirResource>),
+    );
+
+    const codes = Object.fromEntries(valuesets.map((v) => [v.url, v]));
+
+    const reducedSet = parseValuesetMap(codes);
+    reducedSet.forEach((reduced) => {
+      const outFile = path.join(CONFIG.cacheValueSetDir, `${reduced.id}.json`);
+      fs.writeFileSync(outFile, JSON.stringify(reduced, null, 2));
+    });
+  }
 }
 
 generate().catch((err) => {
