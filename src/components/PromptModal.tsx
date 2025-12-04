@@ -6,11 +6,22 @@ import {
   Group,
   rem,
   Stack,
+  type SelectProps,
+  Text,
+  TooltipGroup,
+  Tooltip,
+  Flex,
 } from "@mantine/core";
+import { IconInfoCircle } from "@tabler/icons-react";
 import { useCallback, useState } from "react";
+import { Datatype } from "src-common/fhir-types";
+import type { URL } from "src-common/strict-types";
+import type { ValueSetEntry } from "src-common/valueset-types";
 
 export type PromptType =
   | { type: "select"; options: string[]; title: string }
+  | { type: "select-option"; options: ValueSetEntry[]; title: string }
+  | { type: "select-implementation"; options: URL[]; title: string }
   | { type: "text"; title: string; placeholder?: string }
   | { type: "multi"; fields: { label: string; name: string }[]; title: string };
 
@@ -27,18 +38,25 @@ export const PromptModal: React.FC<PromptModalProps> = ({
   onSubmit,
   onClose,
 }) => {
-  const [selectedValue, setSelectValue] = useState<any>();
+  const [selectedValue, setSelectedValue] = useState<any>();
+  const [selectedDatatype, setSelectedDatatype] = useState<string | null>(null);
 
   const onModalClose = useCallback(() => {
-    setSelectValue(undefined);
+    setSelectedValue(undefined);
     onClose();
   }, [onClose]);
 
   const onModalSubmit = useCallback(
     (e: React.FormEvent<HTMLDivElement>) => {
       e.preventDefault();
-      onSubmit(selectedValue);
-      setSelectValue(undefined);
+
+      if (prompt?.type === "text") {
+        onSubmit({ value: selectedValue, datatype: selectedDatatype });
+      } else {
+        onSubmit(selectedValue);
+      }
+      setSelectedValue(undefined);
+      setSelectedDatatype(null);
     },
     [onSubmit, selectedValue],
   );
@@ -52,6 +70,22 @@ export const PromptModal: React.FC<PromptModalProps> = ({
     }
   }, [prompt, selectedValue]);
 
+  const renderSelectOption: SelectProps["renderOption"] = ({
+    option,
+    checked,
+  }) => (
+    <Tooltip label={option.description} position="bottom-start" withArrow>
+      <Group flex="1" gap="xs">
+        {option.label}
+        <Text c="dimmed" fz="xs">
+          "{option.value}"
+        </Text>
+      </Group>
+    </Tooltip>
+  );
+
+  console.log(prompt);
+
   return (
     <Modal
       component="form"
@@ -61,20 +95,60 @@ export const PromptModal: React.FC<PromptModalProps> = ({
       onSubmit={onModalSubmit}
     >
       <Stack gap={rem(16)}>
+        {prompt?.type === "select-option" && (
+          <Select
+            data={Object.values(prompt.options).map(({ system, concept }) => ({
+              group: system,
+              items: concept.map((x) => ({
+                value: x.code,
+                label: x.display ?? "",
+                description: x.definition,
+              })),
+            }))}
+            value={selectedValue}
+            onChange={(value) => setSelectedValue(value)}
+            renderOption={renderSelectOption}
+            clearable
+          />
+        )}
+        {prompt?.type === "select-implementation" && (
+          <Select
+            data={prompt.options}
+            value={selectedValue}
+            onChange={(value) => setSelectedValue(value)}
+            renderOption={({ option, checked }) => (
+              <>
+                <span>{option.value.split("/").splice(-1)}</span>
+                <Text fz="xs" color="dimmed">
+                  {option.value}
+                </Text>
+              </>
+            )}
+          />
+        )}
         {prompt?.type === "select" && (
           <Select
             data={prompt.options}
             value={selectedValue}
-            onChange={(value) => setSelectValue(value)}
+            onChange={(value) => setSelectedValue(value)}
           />
         )}
         {prompt?.type === "text" && (
-          <TextInput
-            data-autofocus
-            placeholder={prompt.placeholder}
-            value={selectedValue}
-            onChange={(e) => setSelectValue(e.target.value)}
-          />
+          <Flex gap={rem(8)}>
+            <TextInput
+              data-autofocus
+              placeholder={prompt.placeholder}
+              value={selectedValue}
+              onChange={(e) => setSelectedValue(e.target.value)}
+              flex={2}
+            />
+            <Select
+              flex={1}
+              data={Object.values(Datatype)}
+              value={selectedDatatype}
+              onChange={setSelectedDatatype}
+            />
+          </Flex>
         )}
         {prompt?.type === "multi" && (
           <form

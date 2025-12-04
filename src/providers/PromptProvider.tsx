@@ -1,5 +1,8 @@
 import { createContext, useState, useContext } from "react";
 import { PromptModal, type PromptType } from "../components/PromptModal";
+import type { ValueSetEntry } from "src-common/valueset-types";
+import type { Datatype } from "src-common/fhir-types";
+import type { URL } from "src-common/strict-types";
 
 const PromptContext = createContext<ReturnType<typeof useProvidePrompt> | null>(
   null,
@@ -33,9 +36,22 @@ function useProvidePrompt() {
   };
 
   return {
+    askOption: (options: ValueSetEntry[]) =>
+      ask<string | undefined>({
+        type: "select-option",
+        options,
+        title: "Select option",
+      }),
     askSelect: (options: string[]) =>
       ask<string | undefined>({ type: "select", options, title: "Pick one" }),
-    askText: (title: string) => ask({ type: "text", title }),
+    askImplementation: (options: URL[]) =>
+      ask<URL | undefined>({
+        type: "select-implementation",
+        options,
+        title: "Select implementation",
+      }),
+    askText: (title: string) =>
+      ask<{ value: string; datatype: Datatype }>({ type: "text", title }),
     askMulti: (fields: any[]) =>
       ask({ type: "multi", fields, title: "Fill form" }),
     modalProps: {

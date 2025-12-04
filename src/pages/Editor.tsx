@@ -34,6 +34,7 @@ import { useTypeEnvironment } from "../hooks/useTypeEnvironment";
 import { getNonPrimitiveType as _getNonPrimitiveType } from "../model/type-environment-utils";
 import { PromptProvider, usePrompt } from "../providers/PromptProvider";
 import { url, type URL } from "src-common/strict-types.ts";
+import { Datatype } from "src-common/fhir-types.ts";
 
 const nodeTypes = {
   sourceNode: SourceNode,
@@ -43,7 +44,7 @@ const nodeTypes = {
 
 export const FhirMappingFlow: FC = () => {
   const typeEnv = useTypeEnvironment();
-  const { askSelect, askText } = usePrompt();
+  const { askSelect, askText, askOption, askImplementation } = usePrompt();
 
   const getNonPrimitive = useCallback(_getNonPrimitiveType(typeEnv), [
     _getNonPrimitiveType,
@@ -57,7 +58,7 @@ export const FhirMappingFlow: FC = () => {
       position: { x: 0, y: 0 },
       data: {
         type: getNonPrimitive(
-          url("http://hl7.org/fhir/StructureDefinition/Bundle"),
+          url("http://hl7.org/fhir/StructureDefinition/MotuPatient"),
         ),
       },
     },
@@ -91,7 +92,10 @@ export const FhirMappingFlow: FC = () => {
       id: "transform2",
       type: "transformNode",
       position: { x: 600, y: 0 },
-      data: { transformName: "const", args: ["ciao"] },
+      data: {
+        transformName: "const",
+        args: [{ datatype: Datatype.INTEGER, value: 4 }],
+      },
     },
   ];
 
@@ -185,29 +189,35 @@ export const FhirMappingFlow: FC = () => {
         if (
           type === "target" &&
           field.kind === "complex" &&
-          getNonPrimitive(field.value)?.abstract
+          getNonPrimitive(field.value) !== undefined
         ) {
-          const abstractField = getNonPrimitive(field.value)!;
-          const candidates = typeEnv
-            .getImplementations(abstractField?.name)
-            .map((x) => x.url);
+          if (getNonPrimitive(field.value)!.abstract) {
+            const abstractField = getNonPrimitive(field.value)!;
+            const candidates = typeEnv
+              .getImplementations(abstractField?.name)
+              .map((x) => x.url);
 
-          const choice = (await askSelect(candidates)) as URL | undefined;
-          if (choice) {
-            const choiceType = getNonPrimitive(choice);
-            return createNewNode({
-              node: {
-                type: "targetNode",
-                position: xyPos,
-                data: { type: choiceType, inner: true },
-                origin: [0.5, 0.0] as [number, number],
-              },
-              attachTo: {
-                target: connectionState.fromNode!.id,
-                targetHandle: connectionState.fromHandle!.id!,
-              },
-            });
+            const choice = await askImplementation(candidates);
+            if (choice) {
+              const choiceType = getNonPrimitive(choice);
+              return createNewNode({
+                node: {
+                  type: "targetNode",
+                  position: xyPos,
+                  data: { type: choiceType, inner: true },
+                  origin: [0.5, 0.0] as [number, number],
+                },
+                attachTo: {
+                  target: connectionState.fromNode!.id,
+                  targetHandle: connectionState.fromHandle!.id!,
+                },
+              });
+            }
           }
+        } else if (type === "target" && field.kind === "complex") {
+          console.error(
+            `Couldn't find type ${field.value} in type environment`,
+          );
         }
 
         if (field.kind === "complex" || field.kind === "backbone-element") {
@@ -254,15 +264,42 @@ export const FhirMappingFlow: FC = () => {
             ? getNonPrimitive(type.value)!.fields
             : type.fields;
         const field = fields[fromHandle.id!];
-        // Handle primitive types
-        // e.g.: dragging from Patient.gender, Bundle.total, etc.
-        if (fromNode.type === "targetNode" && field.kind === "primitive") {
-          const text = await askText("Select value");
+
+        if (
+          fromNode.type === "targetNode" &&
+          field.kind === "primitive" &&
+          field.value === Datatype.CODE &&
+          field.valueSet !== undefined &&
+          field.valueSet.strength === "required"
+        ) {
+          const opts = typeEnv.getOptions(field.valueSet.url);
+          const opt = await askOption(Object.values(opts));
           return createNewNode({
             node: {
               type: "transformNode",
               position: xyPos,
-              data: { transformName: "const", args: [text] },
+              data: {
+                transformName: "const",
+                args: [{ datatype: Datatype.STRING, value: opt }],
+              },
+              origin: [0.5, 0.0] as [number, number],
+            },
+            attachTo: {
+              target: connectionState.fromNode!.id,
+              targetHandle: connectionState.fromHandle!.id!,
+            },
+          });
+        }
+
+        // Handle primitive types
+        // e.g.: dragging from Patient.gender, Bundle.total, etc.
+        if (fromNode.type === "targetNode" && field.kind === "primitive") {
+          const arg = await askText("Select value");
+          return createNewNode({
+            node: {
+              type: "transformNode",
+              position: xyPos,
+              data: { transformName: "const", args: [arg] },
               origin: [0.5, 0.0] as [number, number],
             },
             attachTo: {
