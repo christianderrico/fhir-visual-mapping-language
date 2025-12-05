@@ -1,4 +1,4 @@
-import { Button, Group, Menu, rem } from "@mantine/core";
+import { Button, Group, Menu } from "@mantine/core";
 import dagre from "@dagrejs/dagre";
 import {
   addEdge,
@@ -22,6 +22,9 @@ import {
 import "@xyflow/react/dist/style.css";
 import {
   useCallback,
+  useEffect,
+  useMemo,
+  useState,
   type Dispatch,
   type FC,
   type SetStateAction,
@@ -41,7 +44,7 @@ import "./node.css";
 import { useTypeEnvironment } from "../hooks/useTypeEnvironment";
 import { getNonPrimitiveType as _getNonPrimitiveType } from "../model/type-environment-utils";
 import { PromptProvider, usePrompt } from "../providers/PromptProvider";
-import { url, type URL } from "src-common/strict-types.ts";
+import { url } from "src-common/strict-types.ts";
 import { Datatype } from "src-common/fhir-types.ts";
 
 const nodeTypes = {
@@ -63,7 +66,7 @@ export const FhirMappingFlow: FC<{
     _getNonPrimitiveType,
     typeEnv,
   ]);
-  const { askSelect, askText, askOption, askImplementation } = usePrompt();
+  const { askText, askOption, askImplementation } = usePrompt();
 
   const { screenToFlowPosition } = useReactFlow();
   const onConnect = useCallback((connection: Connection) => {
@@ -291,6 +294,36 @@ export const Editor: FC = () => {
     typeEnv,
   ]);
 
+  const initialEdges: Edge[] = [];
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+
+  const connections = useMemo(() => {
+    const map = new Map<string, string[]>();
+
+    edges.forEach((edge) => {
+      const id = edge.source;
+      const handle = edge.sourceHandle!;
+
+      if (!map.has(id)) {
+        map.set(id, [handle]);
+      } else {
+        map.get(id)!.push(handle);
+      }
+    });
+
+    return map;
+  }, [edges]);
+
+  useEffect(() => {
+    setNodes((nds) =>
+      nds.map((n) =>
+        n.id === "n1" // da togliere e mettere su tutti i nodi
+          ? { ...n, data: { ...n.data, connections } }
+          : n,
+      ),
+    );
+  }, [connections]);
+
   const initialNodes: Node[] = [
     {
       id: "n1",
@@ -300,6 +333,8 @@ export const Editor: FC = () => {
         type: getNonPrimitive(
           url("http://hl7.org/fhir/StructureDefinition/MotuPatient"),
         ),
+        expand: false,
+        connections,
       },
     },
     {
@@ -314,13 +349,16 @@ export const Editor: FC = () => {
     },
   ];
 
-  const initialEdges: Edge[] = [];
-
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
   const onCollapse = () => {
-    console.log("onCollapse");
+    setNodes((nds) =>
+      nds.map((n) =>
+        n.id === "n1" // da togliere e mettere su tutti i nodi
+          ? { ...n, data: { ...n.data, expand: !n.data.expand } }
+          : n,
+      ),
+    );
   };
 
   const onAutoLayout = () => {
@@ -350,6 +388,10 @@ export const Editor: FC = () => {
 
         return {
           ...n,
+          data: {
+            ...n.data,
+            expand: false,
+          },
           position: {
             x: pos.x - (n.width ?? nodeWidth) / 2,
             y: pos.y - (n.height ?? nodeHeight) / 2,
@@ -364,12 +406,6 @@ export const Editor: FC = () => {
       <header className={classes.header}>
         <div className={classes["header-inner"]}>
           <Group gap={5}>
-            {/*["File", "Edit", "View", "Preview"].map((item) => (
-              <Button variant="subtle" key={item} c="dark" fw="normal">
-                {" "}
-                {item}
-              </Button>
-            ))*/}
             <Menu>
               <Menu.Target>
                 <Button variant="subtle" c="dark" fw="normal">

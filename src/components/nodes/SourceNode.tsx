@@ -1,6 +1,6 @@
 import { Text, Group, Stack } from "@mantine/core";
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
-import { useMemo, useState, type FC } from "react";
+import { useEffect, useMemo, useState, type FC } from "react";
 import classes from "./Node.module.css";
 import clsx from "clsx";
 import type { Field, Resource } from "src-common/fhir-types";
@@ -32,49 +32,40 @@ const Fields: FC<{
 };
 
 type SourceNodeProps = NodeProps<
-  Node<{ type: Resource | Field; inner?: never }>
+  Node<{
+    type: Resource | Field;
+    connections: Map<string, string[]>;
+    expand: boolean;
+    inner?: never;
+  }>
 >;
 
 export const SourceNode: FC<SourceNodeProps> = (props) => {
   const typeEnvironment = useTypeEnvironment();
-  const typeDef = props.data.type;
-  const [expand, setExpand] = useState(false);
+  const { type, connections, expand } = props.data;
+  const [exp, setExp] = useState(expand);
   const getNonPrimitive = getNonPrimitiveType(typeEnvironment);
 
   const fs: Array<[string, Field]> = Object.entries(
-    "fields" in typeDef
-      ? typeDef.fields
-      : typeDef.kind === "complex"
-        ? getNonPrimitive(typeDef.value)!.fields
+    "fields" in type
+      ? type.fields
+      : type.kind === "complex"
+        ? getNonPrimitive(type.value)!.fields
         : {},
   );
 
-  const [connectedFields, setConnectedFields] = useState<boolean[]>(
-    new Array(fs.length).fill(false),
-  );
+  useEffect(() => {
+    setExp(!exp);
+  }, [expand]);
 
   const filterFields = (fs: Array<[string, Field]>): Record<string, Field> =>
     Object.fromEntries(
-      expand ? fs : fs.filter((_, id) => connectedFields[id]),
+      exp ? fs : fs.filter(([k, _]) => connections.get(props.id)?.includes(k)),
     );
 
   const fields = useMemo(() => {
-    const handleFieldConnect = (index: number, value:boolean) => {
-      setConnectedFields((prev) => {
-        const copy = [...prev];
-        copy[index] = value;
-        return copy;
-      });
-    };
-
-    return fs.length > 0 ? (
-      <Fields
-        fields={filterFields(fs)}
-      />
-    ) : (
-      "(empty)"
-    );
-  }, [typeEnvironment, typeDef, expand]);
+    return fs.length > 0 ? <Fields fields={filterFields(fs)} /> : "(empty)";
+  }, [typeEnvironment, type, exp]);
 
   return (
     <div
@@ -94,7 +85,7 @@ export const SourceNode: FC<SourceNodeProps> = (props) => {
         <Group align="center" justify="start" gap="xs">
           {/*<IconPackage size={16} />*/}
           <Text component="span" size="sm">
-            {typeDef.name}
+            {type.name}
           </Text>
           <button
             style={{
@@ -104,9 +95,9 @@ export const SourceNode: FC<SourceNodeProps> = (props) => {
               backgroundColor: "transparent",
               border: 0,
             }}
-            onClick={() => setExpand(!expand)}
+            onClick={() => setExp(!exp)}
           >
-            {expand ? "−" : "+"}
+            {exp ? "−" : "+"}
           </button>
         </Group>
         {props.data.inner && (
