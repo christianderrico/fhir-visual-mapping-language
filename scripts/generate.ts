@@ -2,14 +2,12 @@ import * as fs from "fs";
 import * as path from "path";
 import {
   getCodeSystem,
-  getValuesetsUrl,
   parseStructureDefinition,
   parseValuesetMap,
 } from "../src-common/structure-definition-utils";
+import { basename } from "path";
 import { url, type URL } from "../src-common/strict-types";
 import { readdir } from "fs/promises";
-import type { Resource } from "../src-common/fhir-types";
-import { config } from "process";
 
 interface FhirResource {
   resourceType: string;
@@ -196,11 +194,8 @@ async function writeStructureDefinition(typeCodes: string[]) {
     )
       .flat()
       .map((f) => {
-        const names = f.split("\\");
-        return names
-          .slice(names.length - 1)
-          .join("")
-          .replace(".json", "");
+        const name = basename(f)
+        return name.replace(".json", "");
       });
 
     const valuesets = await Promise.all(
