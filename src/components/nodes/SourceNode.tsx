@@ -1,19 +1,19 @@
 import { Text, Group, Stack } from "@mantine/core";
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
-import { useMemo, type FC } from "react";
+import { useMemo, useState, type FC } from "react";
 import classes from "./Node.module.css";
 import clsx from "clsx";
-import { IconPackage } from "@tabler/icons-react";
 import type { Field, Resource } from "src-common/fhir-types";
 import { useTypeEnvironment } from "../../hooks/useTypeEnvironment";
 import { getNonPrimitiveType } from "../../model/type-environment-utils";
 
 const Fields: FC<{
   fields: Record<string, Field>;
-}> = ({ fields }) => {
+  onHandleChange: (id: number, isOn:boolean) => void
+}> = ({ fields, onHandleChange }) => {
   return (
     <Stack gap="xs">
-      {Object.entries(fields).map(([name, field]) => (
+      {Object.keys(fields).map((name, id, _) => (
         <div
           key={name}
           className={classes.nestedField}
@@ -25,6 +25,7 @@ const Fields: FC<{
             type="source"
             position={Position.Right}
             className={classes.handle}
+            onConnect={() => onHandleChange(id, true)}
           />
         </div>
       ))}
@@ -39,20 +40,44 @@ type SourceNodeProps = NodeProps<
 export const SourceNode: FC<SourceNodeProps> = (props) => {
   const typeEnvironment = useTypeEnvironment();
   const typeDef = props.data.type;
+  const [expand, setExpand] = useState(false);
+  const getNonPrimitive = getNonPrimitiveType(typeEnvironment);
+
+  const fs: Array<[string, Field]> = Object.entries(
+    "fields" in typeDef
+      ? typeDef.fields
+      : typeDef.kind === "complex"
+        ? getNonPrimitive(typeDef.value)!.fields
+        : {},
+  );
+
+  const [connectedFields, setConnectedFields] = useState<boolean[]>(
+    new Array(fs.length).fill(false),
+  );
+
+  const filterFields = (fs: Array<[string, Field]>): Record<string, Field> =>
+    Object.fromEntries(
+      expand ? fs : fs.filter((_, id) => connectedFields[id]),
+    );
 
   const fields = useMemo(() => {
-    const getNonPrimitive = getNonPrimitiveType(typeEnvironment);
-    if ("fields" in typeDef) {
-      return <Fields fields={typeDef.fields} />;
-    }
-    if (typeDef.kind === "complex") {
-      const t = getNonPrimitive(typeDef.value)!;
-      if ("fields" in t) {
-        return <Fields fields={t.fields} />;
-      }
-    }
-    return "(empty)";
-  }, [typeEnvironment, typeDef]);
+    const handleFieldConnect = (index: number, value:boolean) => {
+      setConnectedFields((prev) => {
+        const copy = [...prev];
+        copy[index] = value;
+        return copy;
+      });
+    };
+
+    return fs.length > 0 ? (
+      <Fields
+        fields={filterFields(fs)}
+        onHandleChange={handleFieldConnect}
+      />
+    ) : (
+      "(empty)"
+    );
+  }, [typeEnvironment, typeDef, expand]);
 
   return (
     <div
@@ -70,10 +95,22 @@ export const SourceNode: FC<SourceNodeProps> = (props) => {
         }}
       >
         <Group align="center" justify="start" gap="xs">
-          <IconPackage size={16} />
+          {/*<IconPackage size={16} />*/}
           <Text component="span" size="sm">
             {typeDef.name}
           </Text>
+          <button
+            style={{
+              fontSize: "0.7rem",
+              padding: "0.1rem 0.3rem",
+              cursor: "pointer",
+              backgroundColor: "transparent",
+              border: 0,
+            }}
+            onClick={() => setExpand(!expand)}
+          >
+            {expand ? "−" : "+"}
+          </button>
         </Group>
         {props.data.inner && (
           <Handle
@@ -88,7 +125,9 @@ export const SourceNode: FC<SourceNodeProps> = (props) => {
           className={classes.handle}
         />
       </div>
-      <div style={{ padding: "0 0.5rem" }}>{fields}</div>
+      {/*<Collapse in={expand}>*/}
+        <div style={{ padding: "0 0.5rem" }}>{fields}</div>
+      {/*</Collapse>*/}
     </div>
   );
 };
