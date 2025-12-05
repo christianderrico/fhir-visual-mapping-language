@@ -1,4 +1,5 @@
-import { Button, Group } from "@mantine/core";
+import { Button, Group, Menu, rem } from "@mantine/core";
+import dagre from "@dagrejs/dagre";
 import {
   addEdge,
   Background,
@@ -14,10 +15,17 @@ import {
   type InternalNode,
   type Node,
   type OnConnectEnd,
+  type OnEdgesChange,
+  type OnNodesChange,
   type XYPosition,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { useCallback, type FC } from "react";
+import {
+  useCallback,
+  type Dispatch,
+  type FC,
+  type SetStateAction,
+} from "react";
 import { SourceNode } from "../components/nodes/SourceNode";
 import { TargetNode } from "../components/nodes/TargetNode";
 import { TransformNode } from "../components/nodes/TransformNode";
@@ -42,81 +50,20 @@ const nodeTypes = {
   transformNode: TransformNode,
 };
 
-export const FhirMappingFlow: FC = () => {
+export const FhirMappingFlow: FC<{
+  nodes: Node[];
+  setNodes: Dispatch<SetStateAction<Node[]>>;
+  onNodesChange: OnNodesChange;
+  edges: Edge[];
+  setEdges: Dispatch<SetStateAction<Edge[]>>;
+  onEdgesChange: OnEdgesChange;
+}> = ({ nodes, setNodes, onNodesChange, edges, setEdges, onEdgesChange }) => {
   const typeEnv = useTypeEnvironment();
-  const { askSelect, askText, askOption, askImplementation } = usePrompt();
-
   const getNonPrimitive = useCallback(_getNonPrimitiveType(typeEnv), [
     _getNonPrimitiveType,
     typeEnv,
   ]);
-
-  const initialNodes: Node[] = [
-    {
-      id: "n1",
-      type: "sourceNode",
-      position: { x: 0, y: 0 },
-      data: {
-        type: getNonPrimitive(
-          url("http://hl7.org/fhir/StructureDefinition/MotuPatient"),
-        ),
-      },
-    },
-    {
-      id: "n2",
-      type: "targetNode",
-      position: { x: 600, y: 0 },
-      data: {
-        type: getNonPrimitive(
-          url("http://hl7.org/fhir/StructureDefinition/Patient"),
-        ),
-      },
-    },
-    {
-      id: "n2",
-      type: "targetNode",
-      position: { x: 900, y: 0 },
-      data: {
-        type: getNonPrimitive(
-          url("http://hl7.org/fhir/StructureDefinition/Bundle"),
-        ),
-      },
-    },
-    {
-      id: "transform1",
-      type: "transformNode",
-      position: { x: 400, y: 0 },
-      data: { transformName: "copy" },
-    },
-    {
-      id: "transform2",
-      type: "transformNode",
-      position: { x: 600, y: 0 },
-      data: {
-        transformName: "const",
-        args: [{ datatype: Datatype.INTEGER, value: 4 }],
-      },
-    },
-  ];
-
-  const initialEdges: Edge[] = [
-    {
-      id: "n1-transform1",
-      source: "n1",
-      target: "transform1",
-      sourceHandle: "identifier",
-    },
-    {
-      id: "transform1-n2",
-      source: "transform1",
-      target: "n2",
-      targetHandle: "identifier",
-    },
-    { id: "aaa", source: "transform2", target: "n2", targetHandle: "total" },
-  ];
-
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const { askSelect, askText, askOption, askImplementation } = usePrompt();
 
   const { screenToFlowPosition } = useReactFlow();
   const onConnect = useCallback((connection: Connection) => {
@@ -338,24 +285,139 @@ export const FhirMappingFlow: FC = () => {
 };
 
 export const Editor: FC = () => {
+  const typeEnv = useTypeEnvironment();
+  const getNonPrimitive = useCallback(_getNonPrimitiveType(typeEnv), [
+    _getNonPrimitiveType,
+    typeEnv,
+  ]);
+
+  const initialNodes: Node[] = [
+    {
+      id: "n1",
+      type: "sourceNode",
+      position: { x: 0, y: 0 },
+      data: {
+        type: getNonPrimitive(
+          url("http://hl7.org/fhir/StructureDefinition/MotuPatient"),
+        ),
+      },
+    },
+    {
+      id: "n2",
+      type: "targetNode",
+      position: { x: 900, y: 0 },
+      data: {
+        type: getNonPrimitive(
+          url("http://hl7.org/fhir/StructureDefinition/Bundle"),
+        ),
+      },
+    },
+  ];
+
+  const initialEdges: Edge[] = [];
+
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+
+  const onCollapse = () => {
+    console.log("onCollapse");
+  };
+
+  const onAutoLayout = () => {
+    const g = new dagre.graphlib.Graph();
+    g.setGraph({ rankdir: "LR" });
+    g.setDefaultEdgeLabel(() => ({}));
+
+    const nodeWidth = 500;
+    const nodeHeight = 40;
+
+    nodes.forEach((node) => {
+      g.setNode(node.id, {
+        width: node.width ?? nodeWidth,
+        height: node.height ?? nodeHeight,
+      });
+    });
+
+    edges.forEach((edge) => {
+      g.setEdge(edge.source, edge.target);
+    });
+
+    dagre.layout(g);
+
+    setNodes((nodes) =>
+      nodes.map((n) => {
+        const pos = g.node(n.id);
+
+        return {
+          ...n,
+          position: {
+            x: pos.x - (n.width ?? nodeWidth) / 2,
+            y: pos.y - (n.height ?? nodeHeight) / 2,
+          },
+        };
+      }),
+    );
+  };
+
   return (
     <>
       <header className={classes.header}>
         <div className={classes["header-inner"]}>
           <Group gap={5}>
-            {["File", "Edit", "View", "Preview"].map((item) => (
+            {/*["File", "Edit", "View", "Preview"].map((item) => (
               <Button variant="subtle" key={item} c="dark" fw="normal">
                 {" "}
                 {item}
               </Button>
-            ))}
+            ))*/}
+            <Menu>
+              <Menu.Target>
+                <Button variant="subtle" c="dark" fw="normal">
+                  File
+                </Button>
+              </Menu.Target>
+            </Menu>
+            <Menu>
+              <Menu.Target>
+                <Button variant="subtle" c="dark" fw="normal">
+                  Edit
+                </Button>
+              </Menu.Target>
+            </Menu>
+            <Menu position="bottom-start" offset={12}>
+              <Menu.Target>
+                <Button variant="subtle" c="dark" fw="normal">
+                  View
+                </Button>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Item onClick={onCollapse}>
+                  Expand/collapse nodes
+                </Menu.Item>
+                <Menu.Item onClick={onAutoLayout}>Auto-layout</Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
+            <Menu>
+              <Menu.Target>
+                <Button variant="subtle" c="dark" fw="normal">
+                  Preview
+                </Button>
+              </Menu.Target>
+            </Menu>
           </Group>
         </div>
       </header>
       <div className={classes.main}>
         <PromptProvider>
           <ReactFlowProvider>
-            <FhirMappingFlow />
+            <FhirMappingFlow
+              nodes={nodes}
+              setNodes={setNodes}
+              onNodesChange={onNodesChange}
+              edges={edges}
+              setEdges={setEdges}
+              onEdgesChange={onEdgesChange}
+            />
           </ReactFlowProvider>
         </PromptProvider>
       </div>

@@ -13,6 +13,7 @@
     "test": "vitest run \"test\""
   },
   "dependencies": {
+    "@dagrejs/dagre": "^1.1.8",
     "@mantine/core": "^8.3.6",
     "@mantine/hooks": "^8.3.6",
     "@tabler/icons-react": "^3.35.0",

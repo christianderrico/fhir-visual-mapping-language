@@ -7,7 +7,7 @@
   border: 1px solid var(--node-accent-color);
   border-radius: var(--mantine-radius-md);
   padding: var(--mantine-spacing-sm) 0;
-  width: 200px;
+  /* width: 200px; */
 }
 
 .selected {
