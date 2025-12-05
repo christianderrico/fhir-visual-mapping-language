@@ -1,12 +1,6 @@
 import { Text, Group, Stack, Tooltip } from "@mantine/core";
-import {
-  Handle,
-  Position,
-  useReactFlow,
-  type Node,
-  type NodeProps,
-} from "@xyflow/react";
-import { useCallback, useContext, useMemo, type FC } from "react";
+import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
+import { useCallback, useMemo, type FC } from "react";
 import classes from "./Node.module.css";
 import clsx from "clsx";
 import { IconPackage } from "@tabler/icons-react";

@@ -1,9 +1,9 @@
-import type { DefinedType, Field, Resource } from "src-common/fhir-types";
-import { type URL } from "src-common/strict-types";
+import { isDefinedType, type DefinedType, type Field, type Resource } from "src-common/fhir-types";
 import type { TypeMap } from "./type-map";
 import { SimpleTypeTree, type TypeTree } from "./type-tree";
 import { partition } from "../utils/functions";
-import type { ValueSet, ValueSetMap } from "src-common/valueset-types";
+import type { ValueSet, ValueSetEntry, ValueSetMap } from "src-common/valueset-types";
+import type { URL } from "src-common/strict-types";
 
 export type URLOrDefinedType = URL | DefinedType;
 
@@ -17,7 +17,7 @@ export interface TypeEnvironment {
   ): Field | undefined;
   getImplementations(url: URLOrDefinedType): Resource[];
   getValueSet(url: URL): ValueSet | undefined;
-  getOptions(url: URL): Record<URL, string[]>;
+  getOptions(url: URL): ValueSetEntry[];
 }
 
 export class SimpleTypeEnvironment implements TypeEnvironment {
@@ -44,12 +44,8 @@ export class SimpleTypeEnvironment implements TypeEnvironment {
       Object.fromEntries(elementEntries),
     );
   }
-  getOptions(url: URL): Record<URL, string[]> {
-    return Object.fromEntries(
-      this.getValueSet(url)?.include.map(
-        (v) => [v.system, v.concept.map((c) => c.code)] as const,
-      ) ?? [],
-    );
+  getOptions(url: URL): ValueSetEntry[] {
+    return this.getValueSet(url)?.include ?? [];
   }
 
   getValueSet(url: URL): ValueSet | undefined {
@@ -57,11 +53,17 @@ export class SimpleTypeEnvironment implements TypeEnvironment {
   }
 
   hasType(url: URLOrDefinedType): boolean {
-    return this.typeMap[url as URL] !== undefined;
+    return this.typeMap[this.normalize(url)] !== undefined;
   }
 
   getType(url: URLOrDefinedType): Resource | undefined {
-    return this.typeMap[url as URL];
+    return this.typeMap[this.normalize(url)];
+  }
+
+  private normalize(URLOrDefinedType: URLOrDefinedType): URL {
+    if (isDefinedType(URLOrDefinedType))
+      return ("http://hl7.org/fhir/StructureDefinition/" + URLOrDefinedType) as URL;
+    return URLOrDefinedType;
   }
 
   getTypeFields(url: URLOrDefinedType): Record<string, Field> | undefined {

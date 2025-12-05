@@ -9,11 +9,10 @@ import { getNonPrimitiveType } from "../../model/type-environment-utils";
 
 const Fields: FC<{
   fields: Record<string, Field>;
-  onHandleChange: (id: number, isOn:boolean) => void
-}> = ({ fields, onHandleChange }) => {
+}> = ({ fields }) => {
   return (
     <Stack gap="xs">
-      {Object.keys(fields).map((name, id, _) => (
+      {Object.entries(fields).map(([name]) => (
         <div
           key={name}
           className={classes.nestedField}
@@ -25,7 +24,6 @@ const Fields: FC<{
             type="source"
             position={Position.Right}
             className={classes.handle}
-            onConnect={() => onHandleChange(id, true)}
           />
         </div>
       ))}
@@ -72,7 +70,6 @@ export const SourceNode: FC<SourceNodeProps> = (props) => {
     return fs.length > 0 ? (
       <Fields
         fields={filterFields(fs)}
-        onHandleChange={handleFieldConnect}
       />
     ) : (
       "(empty)"
@@ -125,9 +122,7 @@ export const SourceNode: FC<SourceNodeProps> = (props) => {
           className={classes.handle}
         />
       </div>
-      {/*<Collapse in={expand}>*/}
-        <div style={{ padding: "0 0.5rem" }}>{fields}</div>
-      {/*</Collapse>*/}
+      <div style={{ padding: "0 0.5rem" }}>{fields}</div>
     </div>
   );
 };

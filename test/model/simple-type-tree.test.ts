@@ -13,7 +13,7 @@ import { URL, url } from "../../src-common/strict-types";
 import { partition } from "../../src/utils/functions";
 
 describe("SimpleTypeTree", () => {
-  const metadataFolder = ".\\src-generated\\metadata";
+  const metadataFolder = join(".", "src-generated", "metadata");
 
   const loadModules = (folder: string) =>
     readdirSync(folder)

@@ -1,8 +1,12 @@
-import type { FHIRResourceType } from "src-generated/FHIRResourceTypes";
+import { FHIRResourceTypes, type FHIRResourceType } from "src-generated/FHIRResourceTypes";
 import type { URL } from "./strict-types";
-import type { FHIRDataType } from "src-generated/FHIRDataTypes";
+import { FHIRDataTypes, type FHIRDataType } from "src-generated/FHIRDataTypes";
 
 export type DefinedType = FHIRResourceType | FHIRDataType;
+
+export function isDefinedType(any: any): any is DefinedType {
+  return new Set(FHIRResourceTypes).has(any) || new Set(FHIRDataTypes).has(any);
+}
 
 /**
  * Represent a type corresponding to a `StructureDefinition` instance.
@@ -45,7 +49,7 @@ export function isResource(obj: any): obj is Resource {
  */
 export type Field = BaseField &
   (
-    | { kind: "primitive"; value: Datatype.CODE; valueSet?: {url?: URL, strength: string} }
+    | { kind: "primitive"; value: Datatype.CODE; valueSet?: ValueSet }
     | { kind: "primitive"; value: Exclude<Datatype, Datatype.CODE> }
     | { kind: "backbone-element"; fields: Record<string, Field> }
     | { kind: "element"; fields: Record<string, Field> }
@@ -61,6 +65,8 @@ interface BaseField {
   min: number;
   max: number | "*";
 }
+
+type ValueSet = { url: URL, strength: 'required' | 'preferred' | 'extensible' }
 
 export function isField(obj: any): obj is Field {
   return (
