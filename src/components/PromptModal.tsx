@@ -84,8 +84,6 @@ export const PromptModal: React.FC<PromptModalProps> = ({
     </Tooltip>
   );
 
-  console.log(prompt);
-
   return (
     <Modal
       component="form"
@@ -105,6 +103,8 @@ export const PromptModal: React.FC<PromptModalProps> = ({
                 description: x.definition,
               })),
             }))}
+            searchable
+            autoSelectOnBlur
             value={selectedValue}
             onChange={(value) => setSelectedValue(value)}
             renderOption={renderSelectOption}
@@ -115,6 +115,8 @@ export const PromptModal: React.FC<PromptModalProps> = ({
           <Select
             data={prompt.options}
             value={selectedValue}
+            searchable
+            autoSelectOnBlur
             onChange={(value) => setSelectedValue(value)}
             renderOption={({ option, checked }) => (
               <>
@@ -130,6 +132,8 @@ export const PromptModal: React.FC<PromptModalProps> = ({
           <Select
             data={prompt.options}
             value={selectedValue}
+            searchable
+            autoSelectOnBlur
             onChange={(value) => setSelectedValue(value)}
           />
         )}
