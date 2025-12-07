@@ -51,7 +51,7 @@ function useProvidePrompt() {
         title: "Select implementation",
       }),
     askText: (title: string) =>
-      ask<{ value: string; datatype: Datatype }>({ type: "text", title }),
+      ask<{ value: string; }>({ type: "text", title }),
     askMulti: (fields: any[]) =>
       ask({ type: "multi", fields, title: "Fill form" }),
     modalProps: {

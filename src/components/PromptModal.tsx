@@ -8,11 +8,9 @@ import {
   Stack,
   type SelectProps,
   Text,
-  TooltipGroup,
   Tooltip,
   Flex,
 } from "@mantine/core";
-import { IconInfoCircle } from "@tabler/icons-react";
 import { useCallback, useState } from "react";
 import { Datatype } from "src-common/fhir-types";
 import type { URL } from "src-common/strict-types";
@@ -71,8 +69,7 @@ export const PromptModal: React.FC<PromptModalProps> = ({
   }, [prompt, selectedValue]);
 
   const renderSelectOption: SelectProps["renderOption"] = ({
-    option,
-    checked,
+    option
   }) => (
     <Tooltip label={option.description} position="bottom-start" withArrow>
       <Group flex="1" gap="xs">
@@ -145,12 +142,6 @@ export const PromptModal: React.FC<PromptModalProps> = ({
               value={selectedValue}
               onChange={(e) => setSelectedValue(e.target.value)}
               flex={2}
-            />
-            <Select
-              flex={1}
-              data={Object.values(Datatype)}
-              value={selectedDatatype}
-              onChange={setSelectedDatatype}
             />
           </Flex>
         )}

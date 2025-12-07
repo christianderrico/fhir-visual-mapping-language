@@ -133,6 +133,7 @@ export const FhirMappingFlow: FC<{
               id,
               ...attachTo,
               source: id,
+              animated: true
             };
       setNodes((nds) => nds.concat({ ...node, id }));
       setEdges((eds) => eds.concat({ ...edgeProperties }));
@@ -229,7 +230,7 @@ export const FhirMappingFlow: FC<{
         "changedTouches" in event ? event.changedTouches[0] : event;
       const xyPos = screenToFlowPosition({ x: clientX, y: clientY });
       const { isValid, fromNode, fromHandle } = connectionState;
-      // when a connection is dropped on the pane it's not valid
+      
       if (!isValid) {
         if (fromNode === null || fromHandle === null) return;
         if (fromNode.type === "transformNode") return;
@@ -272,7 +273,7 @@ export const FhirMappingFlow: FC<{
         // Handle primitive types
         // e.g.: dragging from Patient.gender, Bundle.total, etc.
         if (fromNode.type === "targetNode" && field.kind === "primitive") {
-          const arg = await askText("Select value");
+          const arg = await askText("Insert value for this field");
           return createNewNode({
             node: {
               type: "transformNode",
@@ -291,6 +292,8 @@ export const FhirMappingFlow: FC<{
         } else if (fromNode.type === "sourceNode") {
           onNodeConnect(xyPos, connectionState, { type: "source" });
         }
+      } else {
+        const arg = await askText("Copy value")
       }
     },
     [screenToFlowPosition],

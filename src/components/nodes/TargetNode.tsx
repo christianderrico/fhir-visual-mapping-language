@@ -7,6 +7,7 @@ import { IconPackage } from "@tabler/icons-react";
 import type { Field, Resource } from "src-common/fhir-types";
 import { useTypeEnvironment } from "../../hooks/useTypeEnvironment";
 import { getNonPrimitiveType } from "../../model/type-environment-utils";
+import { asVariableName, extractNumberFromString } from "src/utils/functions";
 
 type TargetNodeProps = NodeProps<
   Node<{
@@ -85,6 +86,7 @@ export const TargetNode: FC<TargetNodeProps> = (props) => {
           <IconPackage size={16} />
           <Text component="span" size="sm">
             {typeDef.name}
+            <Text component="span" size="xs" color="dimmed"> ({asVariableName(typeDef.name) + "_" + extractNumberFromString(props.id)})</Text>
           </Text>
           <Button
               onClick={() => onToggleNodeExpand(!expand, props.id)}
