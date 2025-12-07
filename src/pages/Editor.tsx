@@ -1,4 +1,13 @@
-import { Button, Group, Menu } from "@mantine/core";
+import {
+  Button,
+  Card,
+  Code,
+  Group,
+  Menu,
+  Modal,
+  ScrollArea,
+  Tabs,
+} from "@mantine/core";
 import dagre from "@dagrejs/dagre";
 import {
   addEdge,
@@ -47,6 +56,8 @@ import { getNonPrimitiveType as _getNonPrimitiveType } from "../model/type-envir
 import { PromptProvider, usePrompt } from "../providers/PromptProvider";
 import { url } from "src-common/strict-types.ts";
 import { Datatype } from "src-common/fhir-types.ts";
+import { useDisclosure } from "@mantine/hooks";
+import { CodeHighlight } from "@mantine/code-highlight";
 
 const nodeTypes = {
   sourceNode: SourceNode,
@@ -399,9 +410,7 @@ export const Editor: FC = () => {
   ];
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [stack, setStack] = useState<{ nodes: Node[]; edges: Edge[] }[]>([
-    { nodes, edges },
-  ]);
+  const [stack, setStack] = useState<{ nodes: Node[]; edges: Edge[] }[]>([]);
   const undoRedoLimit = 10;
 
   function cloneNode(node: Node) {
@@ -427,15 +436,18 @@ export const Editor: FC = () => {
 
         return sameNodes && sameEdges;
       });
+
       const updated = !exists
         ? [
             {
               nodes: [...nodes.map(cloneNode)],
               edges: structuredClone(edges),
             },
-            ...prev
+            ...prev,
           ]
         : prev;
+
+      console.log(updated);
       return updated.length > undoRedoLimit ? updated.slice(1) : updated;
     });
   }, [edges, nodes]);
@@ -443,11 +455,15 @@ export const Editor: FC = () => {
   const redoPressed = useKeyPress("Control+z");
 
   useEffect(() => {
-    if (redoPressed){
-      let snapshot = stack[1]
-      setStack(prev => prev.slice(1))
-      setNodes(nodes => snapshot?.nodes ?? nodes)
-      setEdges(edges => snapshot?.edges ?? edges)
+    console.log("UNDO");
+    if (redoPressed) {
+      if (stack.length >= 2) {
+        let snapshot = stack[1];
+        setStack((prev) => prev.slice(1));
+        console.log(snapshot);
+        setNodes((nodes) => snapshot?.nodes ?? nodes);
+        setEdges((edges) => snapshot?.edges ?? edges);
+      }
     }
   }, [redoPressed]);
 
@@ -495,6 +511,13 @@ export const Editor: FC = () => {
     });
   };
 
+  const [opened, { open, close }] = useDisclosure(false);
+  const myCodeString = `
+    map "http://termx.health/fhir/StructureMap/MotuHospitalStayToBundle" = "MotuHospitalStayToBundle"
+uses "http://hl7.org/fhir/StructureDefinition/MotuHospitalStay" alias MotuHospitalStayPatient as source
+uses "http://hl7.org/fhir/StructureDefinition/Bundle" alias Bundle as target"
+  `;
+
   return (
     <>
       <header className={classes.header}>
@@ -528,12 +551,45 @@ export const Editor: FC = () => {
             </Menu>
             <Menu>
               <Menu.Target>
-                <Button variant="subtle" c="dark" fw="normal">
+                <Button variant="subtle" c="dark" fw="normal" onClick={open}>
                   Preview
                 </Button>
               </Menu.Target>
             </Menu>
           </Group>
+          <Modal
+            opened={opened}
+            onClose={close}
+            title="Preview"
+            size={"auto"}
+            overlayProps={{
+              backgroundOpacity: 0.55,
+              blur: 3,
+            }}
+          >
+            <Card shadow="sm" radius="md" withBorder>
+              <Tabs defaultValue="fml">
+                <Tabs.List>
+                  <Tabs.Tab value="fml">FML</Tabs.Tab>
+                </Tabs.List>
+                <Tabs.Panel value="fml" pt="xs">
+                  <ScrollArea offsetScrollbars>
+                    <CodeHighlight
+                      code={myCodeString}
+                      language="tsx"
+                      withCopyButton={false}
+                      withExpandButton={false}
+                      styles={{
+                        showCodeButton: {
+                          display: "none",
+                        },
+                      }}
+                    />
+                  </ScrollArea>
+                </Tabs.Panel>
+              </Tabs>
+            </Card>
+          </Modal>
         </div>
       </header>
       <div className={classes.main}>
