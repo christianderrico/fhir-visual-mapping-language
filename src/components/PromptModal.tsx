@@ -138,7 +138,7 @@ export const PromptModal: React.FC<PromptModalProps> = ({
           <Flex gap={rem(8)}>
             <TextInput
               data-autofocus
-              placeholder={prompt.placeholder}
+              defaultValue={prompt.placeholder}
               value={selectedValue}
               onChange={(e) => setSelectedValue(e.target.value)}
               flex={2}

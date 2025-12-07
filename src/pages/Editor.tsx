@@ -58,6 +58,10 @@ import { url } from "src-common/strict-types.ts";
 import { Datatype } from "src-common/fhir-types.ts";
 import { useDisclosure } from "@mantine/hooks";
 import { CodeHighlight } from "@mantine/code-highlight";
+import {
+  asVariableName,
+  extractNumberFromString,
+} from "src/utils/functions.ts";
 
 const nodeTypes = {
   sourceNode: SourceNode,
@@ -320,7 +324,13 @@ export const FhirMappingFlow: FC<{
           onNodeConnect(xyPos, connectionState, { type: "source" });
         }
       } else {
-        const arg = await askText("Copy value");
+        const arg = await askText(
+          "Copy value",
+          asVariableName(fromNode?.data.type.name ?? "") +
+            "_" +
+            extractNumberFromString(fromNode?.id ?? "") + "." + fromHandle?.id,
+        );
+        console.log(arg)
       }
     },
     [screenToFlowPosition],
@@ -551,7 +561,15 @@ uses "http://hl7.org/fhir/StructureDefinition/Bundle" alias Bundle as target"
             </Menu>
             <Menu>
               <Menu.Target>
-                <Button variant="subtle" c="dark" fw="normal" onClick={open}>
+                <Button
+                  variant="subtle"
+                  c="dark"
+                  fw="normal"
+                  onClick={() => {
+                    console.log("APRO MODAL");
+                    open();
+                  }}
+                >
                   Preview
                 </Button>
               </Menu.Target>
