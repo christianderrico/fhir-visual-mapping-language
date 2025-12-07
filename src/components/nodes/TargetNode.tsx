@@ -1,6 +1,6 @@
-import { Text, Group, Stack, Tooltip } from "@mantine/core";
+import { Text, Group, Stack, Tooltip, Button } from "@mantine/core";
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
-import { useCallback, useMemo, type FC } from "react";
+import { useCallback, type FC } from "react";
 import classes from "./Node.module.css";
 import clsx from "clsx";
 import { IconPackage } from "@tabler/icons-react";
@@ -9,29 +9,37 @@ import { useTypeEnvironment } from "../../hooks/useTypeEnvironment";
 import { getNonPrimitiveType } from "../../model/type-environment-utils";
 
 type TargetNodeProps = NodeProps<
-  Node<{ type: Resource | Field; inner?: boolean }>
+  Node<{
+    type: Resource | Field;
+    connections: Map<string, string[]>;
+    expand: boolean;
+    onToggleNodeExpand: (isExpanded: boolean, id?: string) => void
+    inner?: never;
+  }>
 >;
 
 export const TargetNode: FC<TargetNodeProps> = (props) => {
   const typeEnv = useTypeEnvironment();
-  const typeDef = props.data.type;
+  const { type: typeDef, connections, expand, onToggleNodeExpand } = props.data;
+  const getNonPrimitive = getNonPrimitiveType(typeEnv);
 
-  const fields = useMemo(() => {
-    const getNonPrimitive = getNonPrimitiveType(typeEnv);
-    if ("fields" in typeDef) {
-      return typeDef.fields;
-    }
-    if (typeDef.kind === "complex") {
-      const t = getNonPrimitive(typeDef.value);
-      return t?.fields ?? [];
-    }
-    return [];
-  }, [typeDef, typeEnv]);
+  const fs: Array<[string, Field]> = Object.entries(
+    "fields" in typeDef
+      ? typeDef.fields
+      : typeDef.kind === "complex"
+        ? getNonPrimitive(typeDef.value)!.fields
+        : {},
+  );
+  
+  const filterFields = (fs: Array<[string, Field]>): Record<string, Field> =>
+    Object.fromEntries(
+      expand ? fs : fs.filter(([k, _]) => connections.get(props.id)?.includes(k)),
+    );
 
   const Fields: FC = useCallback(
     () => (
       <Stack gap="xs">
-        {Object.entries(fields).map(([name, _field]) => (
+        {Object.entries(filterFields(fs)).map(([name, _field]) => (
           <div
             key={name}
             className={classes.nestedField}
@@ -48,7 +56,7 @@ export const TargetNode: FC<TargetNodeProps> = (props) => {
         ))}
       </Stack>
     ),
-    [fields],
+    [fs],
   );
 
   return (
@@ -78,6 +86,14 @@ export const TargetNode: FC<TargetNodeProps> = (props) => {
           <Text component="span" size="sm">
             {typeDef.name}
           </Text>
+          <Button
+              onClick={() => onToggleNodeExpand(!expand, props.id)}
+              variant="subtle"
+              c="dark"
+              fw="normal"
+            >
+            {expand ? "−" : "+"}
+          </Button>
         </Group>
         {props.data.inner && (
           <Handle

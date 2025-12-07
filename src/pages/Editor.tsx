@@ -24,7 +24,6 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useState,
   type Dispatch,
   type FC,
   type SetStateAction,
@@ -53,6 +52,25 @@ const nodeTypes = {
   transformNode: TransformNode,
 };
 
+function createConnectionsMap(edges: Edge[]): Map<string, string[]> {
+  const map = new Map<string, string[]>();
+
+  edges.forEach(({ source, sourceHandle, target, targetHandle }) => {
+    // Funzione di utilità per aggiungere un handle alla mappa
+    const addHandle = (key: string, handle: string | null | undefined) => {
+      if (!handle) return;
+      const handles = map.get(key) ?? [];
+      handles.push(handle);
+      map.set(key, handles);
+    };
+
+    addHandle(source, sourceHandle);
+    addHandle(target, targetHandle);
+  });
+
+  return map;
+}
+
 export const FhirMappingFlow: FC<{
   nodes: Node[];
   setNodes: Dispatch<SetStateAction<Node[]>>;
@@ -60,8 +78,10 @@ export const FhirMappingFlow: FC<{
   edges: Edge[];
   setEdges: Dispatch<SetStateAction<Edge[]>>;
   onEdgesChange: OnEdgesChange;
-}> = ({ nodes, setNodes, onNodesChange, edges, setEdges, onEdgesChange }) => {
+  onToggleNodeExpand: (isExpanded: boolean, id?: string) => void
+}> = ({ nodes, setNodes, onNodesChange, edges, setEdges, onEdgesChange, onToggleNodeExpand }) => {
   const typeEnv = useTypeEnvironment();
+  const connections = createConnectionsMap(edges);
   const getNonPrimitive = useCallback(_getNonPrimitiveType(typeEnv), [
     _getNonPrimitiveType,
     typeEnv,
@@ -70,7 +90,7 @@ export const FhirMappingFlow: FC<{
 
   const { screenToFlowPosition } = useReactFlow();
   const onConnect = useCallback((connection: Connection) => {
-    setEdges((eds) => addEdge({ ...connection }, eds));
+    setEdges((eds) => addEdge({ ...connection, animated: true }, eds));
   }, []);
 
   const idGenerator = new LabelIdGenerator("test");
@@ -99,8 +119,10 @@ export const FhirMappingFlow: FC<{
           ? ({
               id,
               ...attachTo,
+              animated: true,
               target: id,
             } as {
+              animated: boolean;
               id: string;
               source: string;
               sourceHandle: string;
@@ -154,7 +176,13 @@ export const FhirMappingFlow: FC<{
                 node: {
                   type: "targetNode",
                   position: xyPos,
-                  data: { type: choiceType, inner: true },
+                  data: {
+                    type: choiceType,
+                    inner: true,
+                    expand: false,
+                    connections,
+                    onToggleNodeExpand
+                  },
                   origin: [0.5, 0.0] as [number, number],
                 },
                 attachTo: {
@@ -175,7 +203,7 @@ export const FhirMappingFlow: FC<{
             node: {
               type: type + "Node",
               position: xyPos,
-              data: { type: field, inner: true },
+              data: { type: field, inner: true, expand: false, connections, onToggleNodeExpand },
               origin: [0.5, 0.0] as [number, number],
             },
             attachTo:
@@ -294,34 +322,30 @@ export const Editor: FC = () => {
     typeEnv,
   ]);
 
+  function transformNodes(mapper: (node: Node) => Node){
+    setNodes((nodes) => nodes.map(mapper));
+  }
+
+  function onToggleNodeExpand(isExpanded: boolean, id?: string) {
+    transformNodes((n) => {
+      if (id) {
+        return n.id === id
+          ? { ...n, data: { ...n.data, expand: isExpanded } }
+          : n;
+      }
+      return { ...n, data: { ...n.data, expand: isExpanded } };
+    });
+  }
+
   const initialEdges: Edge[] = [];
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
   const connections = useMemo(() => {
-    const map = new Map<string, string[]>();
-
-    edges.forEach((edge) => {
-      const id = edge.source;
-      const handle = edge.sourceHandle!;
-
-      if (!map.has(id)) {
-        map.set(id, [handle]);
-      } else {
-        map.get(id)!.push(handle);
-      }
-    });
-
-    return map;
+    return createConnectionsMap(edges);
   }, [edges]);
 
   useEffect(() => {
-    setNodes((nds) =>
-      nds.map((n) =>
-        n.id === "n1" // da togliere e mettere su tutti i nodi
-          ? { ...n, data: { ...n.data, connections } }
-          : n,
-      ),
-    );
+    transformNodes((n) => { return { ...n, data: { ...n.data, connections } }})
   }, [connections]);
 
   const initialNodes: Node[] = [
@@ -335,6 +359,7 @@ export const Editor: FC = () => {
         ),
         expand: false,
         connections,
+        onToggleNodeExpand,
       },
     },
     {
@@ -345,6 +370,9 @@ export const Editor: FC = () => {
         type: getNonPrimitive(
           url("http://hl7.org/fhir/StructureDefinition/Bundle"),
         ),
+        expand: false,
+        connections,
+        onToggleNodeExpand,
       },
     },
   ];
@@ -352,22 +380,20 @@ export const Editor: FC = () => {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
 
   const onCollapse = () => {
-    setNodes((nds) =>
-      nds.map((n) =>
-        n.id === "n1" // da togliere e mettere su tutti i nodi
-          ? { ...n, data: { ...n.data, expand: !n.data.expand } }
-          : n,
-      ),
-    );
+    onToggleNodeExpand(false);
+  };
+
+  const onExpand = () => {
+    onToggleNodeExpand(true);
   };
 
   const onAutoLayout = () => {
     const g = new dagre.graphlib.Graph();
-    g.setGraph({ rankdir: "LR" });
+    g.setGraph({ rankdir: "LR", nodesep: 50, ranksep: 100});
     g.setDefaultEdgeLabel(() => ({}));
 
-    const nodeWidth = 500;
-    const nodeHeight = 40;
+    const nodeWidth = 200;
+    const nodeHeight = 30;
 
     nodes.forEach((node) => {
       g.setNode(node.id, {
@@ -381,24 +407,20 @@ export const Editor: FC = () => {
     });
 
     dagre.layout(g);
-
-    setNodes((nodes) =>
-      nodes.map((n) => {
-        const pos = g.node(n.id);
-
-        return {
-          ...n,
-          data: {
-            ...n.data,
-            expand: false,
-          },
-          position: {
-            x: pos.x - (n.width ?? nodeWidth) / 2,
-            y: pos.y - (n.height ?? nodeHeight) / 2,
-          },
-        };
-      }),
-    );
+    transformNodes((n) => {
+      const pos = g.node(n.id);
+      return {
+        ...n,
+        data: {
+          ...n.data,
+          expand: false,
+        },
+        position: {
+          x: pos.x - (n.width ?? nodeWidth) / 2,
+          y: pos.y - (n.height ?? nodeHeight) / 2,
+        },
+      };
+    });
   };
 
   return (
@@ -427,9 +449,8 @@ export const Editor: FC = () => {
                 </Button>
               </Menu.Target>
               <Menu.Dropdown>
-                <Menu.Item onClick={onCollapse}>
-                  Expand/collapse nodes
-                </Menu.Item>
+                <Menu.Item onClick={onExpand}>Expand nodes</Menu.Item>
+                <Menu.Item onClick={onCollapse}>Collapse nodes</Menu.Item>
                 <Menu.Item onClick={onAutoLayout}>Auto-layout</Menu.Item>
               </Menu.Dropdown>
             </Menu>
@@ -453,6 +474,7 @@ export const Editor: FC = () => {
               edges={edges}
               setEdges={setEdges}
               onEdgesChange={onEdgesChange}
+              onToggleNodeExpand={onToggleNodeExpand}
             />
           </ReactFlowProvider>
         </PromptProvider>

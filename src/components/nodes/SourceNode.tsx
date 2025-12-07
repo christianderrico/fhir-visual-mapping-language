@@ -1,6 +1,6 @@
-import { Text, Group, Stack } from "@mantine/core";
+import { Text, Group, Stack, Button } from "@mantine/core";
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
-import { useEffect, useMemo, useState, type FC } from "react";
+import { useMemo, type FC } from "react";
 import classes from "./Node.module.css";
 import clsx from "clsx";
 import type { Field, Resource } from "src-common/fhir-types";
@@ -36,36 +36,32 @@ type SourceNodeProps = NodeProps<
     type: Resource | Field;
     connections: Map<string, string[]>;
     expand: boolean;
+    onToggleNodeExpand: (isExpanded: boolean, id?: string) => void;
     inner?: never;
   }>
 >;
 
 export const SourceNode: FC<SourceNodeProps> = (props) => {
   const typeEnvironment = useTypeEnvironment();
-  const { type, connections, expand } = props.data;
-  const [exp, setExp] = useState(expand);
+  const { type: typeDef, connections, expand, onToggleNodeExpand } = props.data;
   const getNonPrimitive = getNonPrimitiveType(typeEnvironment);
 
   const fs: Array<[string, Field]> = Object.entries(
-    "fields" in type
-      ? type.fields
-      : type.kind === "complex"
-        ? getNonPrimitive(type.value)!.fields
+    "fields" in typeDef
+      ? typeDef.fields
+      : typeDef.kind === "complex"
+        ? getNonPrimitive(typeDef.value)!.fields
         : {},
   );
 
-  useEffect(() => {
-    setExp(!exp);
-  }, [expand]);
-
   const filterFields = (fs: Array<[string, Field]>): Record<string, Field> =>
     Object.fromEntries(
-      exp ? fs : fs.filter(([k, _]) => connections.get(props.id)?.includes(k)),
+      expand ? fs : fs.filter(([k, _]) => connections.get(props.id)?.includes(k)),
     );
 
   const fields = useMemo(() => {
     return fs.length > 0 ? <Fields fields={filterFields(fs)} /> : "(empty)";
-  }, [typeEnvironment, type, exp]);
+  }, [typeEnvironment, typeDef, expand]);
 
   return (
     <div
@@ -85,20 +81,16 @@ export const SourceNode: FC<SourceNodeProps> = (props) => {
         <Group align="center" justify="start" gap="xs">
           {/*<IconPackage size={16} />*/}
           <Text component="span" size="sm">
-            {type.name}
+            {typeDef.name}
           </Text>
-          <button
-            style={{
-              fontSize: "0.7rem",
-              padding: "0.1rem 0.3rem",
-              cursor: "pointer",
-              backgroundColor: "transparent",
-              border: 0,
-            }}
-            onClick={() => setExp(!exp)}
+          <Button
+            onClick={() => onToggleNodeExpand(!expand, props.id)}
+            variant="subtle"
+            c="dark"
+            fw="normal"
           >
-            {exp ? "−" : "+"}
-          </button>
+            {expand ? "−" : "+"}
+          </Button>
         </Group>
         {props.data.inner && (
           <Handle
