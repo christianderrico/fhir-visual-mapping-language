@@ -7,12 +7,12 @@ export class LabelIdGenerator implements IdGenerator {
 
   constructor(
     private label: string,
-    startFrom: number = 0,
+    startFrom: number = 3,
   ) {
     this.counter = startFrom;
   }
 
   getId(): string {
-    return `${this.label}__${this.counter++}`;
+    return `${this.label}_${this.counter++}`;
   }
 }

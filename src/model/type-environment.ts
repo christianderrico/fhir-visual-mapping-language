@@ -29,9 +29,6 @@ export class SimpleTypeEnvironment implements TypeEnvironment {
     private valueSets: ValueSetMap,
   ) {
     const entries = Object.entries(typeMap);
-
-    console.log(valueSets);
-
     const [resourceEntries, elementEntries] = partition(
       entries,
       ([_, t]) => t.kind === "resource",

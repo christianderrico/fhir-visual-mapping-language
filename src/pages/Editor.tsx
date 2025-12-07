@@ -7,6 +7,7 @@ import {
   ReactFlow,
   ReactFlowProvider,
   useEdgesState,
+  useKeyPress,
   useNodesState,
   useReactFlow,
   type Connection,
@@ -24,6 +25,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useState,
   type Dispatch,
   type FC,
   type SetStateAction,
@@ -78,8 +80,16 @@ export const FhirMappingFlow: FC<{
   edges: Edge[];
   setEdges: Dispatch<SetStateAction<Edge[]>>;
   onEdgesChange: OnEdgesChange;
-  onToggleNodeExpand: (isExpanded: boolean, id?: string) => void
-}> = ({ nodes, setNodes, onNodesChange, edges, setEdges, onEdgesChange, onToggleNodeExpand }) => {
+  onToggleNodeExpand: (isExpanded: boolean, id?: string) => void;
+}> = ({
+  nodes,
+  setNodes,
+  onNodesChange,
+  edges,
+  setEdges,
+  onEdgesChange,
+  onToggleNodeExpand,
+}) => {
   const typeEnv = useTypeEnvironment();
   const connections = createConnectionsMap(edges);
   const getNonPrimitive = useCallback(_getNonPrimitiveType(typeEnv), [
@@ -93,7 +103,7 @@ export const FhirMappingFlow: FC<{
     setEdges((eds) => addEdge({ ...connection, animated: true }, eds));
   }, []);
 
-  const idGenerator = new LabelIdGenerator("test");
+  const idGenerator = new LabelIdGenerator("n");
 
   const createNewNode = useCallback(
     (opts: {
@@ -133,7 +143,7 @@ export const FhirMappingFlow: FC<{
               id,
               ...attachTo,
               source: id,
-              animated: true
+              animated: true,
             };
       setNodes((nds) => nds.concat({ ...node, id }));
       setEdges((eds) => eds.concat({ ...edgeProperties }));
@@ -182,7 +192,7 @@ export const FhirMappingFlow: FC<{
                     inner: true,
                     expand: false,
                     connections,
-                    onToggleNodeExpand
+                    onToggleNodeExpand,
                   },
                   origin: [0.5, 0.0] as [number, number],
                 },
@@ -204,7 +214,13 @@ export const FhirMappingFlow: FC<{
             node: {
               type: type + "Node",
               position: xyPos,
-              data: { type: field, inner: true, expand: false, connections, onToggleNodeExpand },
+              data: {
+                type: field,
+                inner: true,
+                expand: false,
+                connections,
+                onToggleNodeExpand,
+              },
               origin: [0.5, 0.0] as [number, number],
             },
             attachTo:
@@ -230,7 +246,7 @@ export const FhirMappingFlow: FC<{
         "changedTouches" in event ? event.changedTouches[0] : event;
       const xyPos = screenToFlowPosition({ x: clientX, y: clientY });
       const { isValid, fromNode, fromHandle } = connectionState;
-      
+
       if (!isValid) {
         if (fromNode === null || fromHandle === null) return;
         if (fromNode.type === "transformNode") return;
@@ -293,7 +309,7 @@ export const FhirMappingFlow: FC<{
           onNodeConnect(xyPos, connectionState, { type: "source" });
         }
       } else {
-        const arg = await askText("Copy value")
+        const arg = await askText("Copy value");
       }
     },
     [screenToFlowPosition],
@@ -325,7 +341,7 @@ export const Editor: FC = () => {
     typeEnv,
   ]);
 
-  function transformNodes(mapper: (node: Node) => Node){
+  function transformNodes(mapper: (node: Node) => Node) {
     setNodes((nodes) => nodes.map(mapper));
   }
 
@@ -348,7 +364,9 @@ export const Editor: FC = () => {
   }, [edges]);
 
   useEffect(() => {
-    transformNodes((n) => { return { ...n, data: { ...n.data, connections } }})
+    transformNodes((n) => {
+      return { ...n, data: { ...n.data, connections } };
+    });
   }, [connections]);
 
   const initialNodes: Node[] = [
@@ -381,6 +399,57 @@ export const Editor: FC = () => {
   ];
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [stack, setStack] = useState<{ nodes: Node[]; edges: Edge[] }[]>([
+    { nodes, edges },
+  ]);
+  const undoRedoLimit = 10;
+
+  function cloneNode(node: Node) {
+    return {
+      ...node,
+      data: {
+        ...node.data,
+        expand: true,
+      },
+    };
+  }
+
+  useEffect(() => {
+    setStack((prev) => {
+      const exists = prev.some((snapshot) => {
+        const sameNodes =
+          snapshot.nodes.length === nodes.length &&
+          snapshot.nodes.every((n, i) => n.id === nodes[i].id);
+
+        const sameEdges =
+          snapshot.edges.length === edges.length &&
+          snapshot.edges.every((e, i) => e.id === edges[i].id);
+
+        return sameNodes && sameEdges;
+      });
+      const updated = !exists
+        ? [
+            {
+              nodes: [...nodes.map(cloneNode)],
+              edges: structuredClone(edges),
+            },
+            ...prev
+          ]
+        : prev;
+      return updated.length > undoRedoLimit ? updated.slice(1) : updated;
+    });
+  }, [edges, nodes]);
+
+  const redoPressed = useKeyPress("Control+z");
+
+  useEffect(() => {
+    if (redoPressed){
+      let snapshot = stack[1]
+      setStack(prev => prev.slice(1))
+      setNodes(nodes => snapshot?.nodes ?? nodes)
+      setEdges(edges => snapshot?.edges ?? edges)
+    }
+  }, [redoPressed]);
 
   const onCollapse = () => {
     onToggleNodeExpand(false);
@@ -392,7 +461,7 @@ export const Editor: FC = () => {
 
   const onAutoLayout = () => {
     const g = new dagre.graphlib.Graph();
-    g.setGraph({ rankdir: "LR", nodesep: 50, ranksep: 100});
+    g.setGraph({ rankdir: "LR", nodesep: 50, ranksep: 100 });
     g.setDefaultEdgeLabel(() => ({}));
 
     const nodeWidth = 200;

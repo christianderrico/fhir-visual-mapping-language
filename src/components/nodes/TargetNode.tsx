@@ -14,7 +14,7 @@ type TargetNodeProps = NodeProps<
     type: Resource | Field;
     connections: Map<string, string[]>;
     expand: boolean;
-    onToggleNodeExpand: (isExpanded: boolean, id?: string) => void
+    onToggleNodeExpand: (isExpanded: boolean, id?: string) => void;
     inner?: never;
   }>
 >;
@@ -31,10 +31,12 @@ export const TargetNode: FC<TargetNodeProps> = (props) => {
         ? getNonPrimitive(typeDef.value)!.fields
         : {},
   );
-  
+
   const filterFields = (fs: Array<[string, Field]>): Record<string, Field> =>
     Object.fromEntries(
-      expand ? fs : fs.filter(([k, _]) => connections.get(props.id)?.includes(k)),
+      expand
+        ? fs
+        : fs.filter(([k, _]) => connections.get(props.id)?.includes(k)),
     );
 
   const Fields: FC = useCallback(
@@ -86,14 +88,21 @@ export const TargetNode: FC<TargetNodeProps> = (props) => {
           <IconPackage size={16} />
           <Text component="span" size="sm">
             {typeDef.name}
-            <Text component="span" size="xs" color="dimmed"> ({asVariableName(typeDef.name) + "_" + extractNumberFromString(props.id)})</Text>
+            <Text component="span" size="xs" color="dimmed">
+              {" "}
+              (
+              {asVariableName(typeDef.name) +
+                "_" +
+                extractNumberFromString(props.id)}
+              )
+            </Text>
           </Text>
           <Button
-              onClick={() => onToggleNodeExpand(!expand, props.id)}
-              variant="subtle"
-              c="dark"
-              fw="normal"
-            >
+            onClick={() => onToggleNodeExpand(!expand, props.id)}
+            variant="subtle"
+            c="dark"
+            fw="normal"
+          >
             {expand ? "−" : "+"}
           </Button>
         </Group>

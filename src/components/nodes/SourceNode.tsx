@@ -57,7 +57,9 @@ export const SourceNode: FC<SourceNodeProps> = (props) => {
 
   const filterFields = (fs: Array<[string, Field]>): Record<string, Field> =>
     Object.fromEntries(
-      expand ? fs : fs.filter(([k, _]) => connections.get(props.id)?.includes(k)),
+      expand
+        ? fs
+        : fs.filter(([k, _]) => connections.get(props.id)?.includes(k)),
     );
 
   const fields = useMemo(() => {
@@ -83,7 +85,20 @@ export const SourceNode: FC<SourceNodeProps> = (props) => {
           {/*<IconPackage size={16} />*/}
           <Text component="span" size="sm">
             {typeDef.name}
-            <Text component="span" size="xs" color="dimmed"> ({asVariableName(typeDef.name) + "_" + extractNumberFromString(props.id)})</Text>
+            <Text
+              component="span"
+              size="xs"
+              color="dimmed"
+              contentEditable
+              suppressContentEditableWarning={true}
+            >
+              {" "}
+              (
+              {asVariableName(typeDef.name) +
+                "_" +
+                extractNumberFromString(props.id)}
+              )
+            </Text>
           </Text>
           <Button
             onClick={() => onToggleNodeExpand(!expand, props.id)}
