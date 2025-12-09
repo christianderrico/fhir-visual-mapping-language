@@ -435,19 +435,15 @@ export const Editor: FC = () => {
 
   useEffect(() => {
     setStack((prev) => {
-      const exists = prev.some((snapshot) => {
-        const sameNodes =
-          snapshot.nodes.length === nodes.length &&
-          snapshot.nodes.every((n, i) => n.id === nodes[i].id);
+      const snapshotEquals = (snap: {nodes: Node[], edges: Edge[]}, nodes: Node[], edges: Edge[]) =>
+        snap.nodes.length === nodes.length &&
+        snap.nodes.every((n: Node, i:number) => n.id === nodes[i]?.id) &&
+        snap.edges.length === edges.length &&
+        snap.edges.every((e: Edge, i:number) => e.id === edges[i]?.id);
 
-        const sameEdges =
-          snapshot.edges.length === edges.length &&
-          snapshot.edges.every((e, i) => e.id === edges[i].id);
+      const changed = prev.length > 0 && snapshotEquals(prev[0], nodes, edges);
 
-        return sameNodes && sameEdges;
-      });
-
-      const updated = !exists
+      const updated = !changed
         ? [
             {
               nodes: [...nodes.map(cloneNode)],
@@ -456,8 +452,6 @@ export const Editor: FC = () => {
             ...prev,
           ]
         : prev;
-
-      console.log(updated);
       return updated.length > undoRedoLimit ? updated.slice(1) : updated;
     });
   }, [edges, nodes]);
