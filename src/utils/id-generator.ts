@@ -16,3 +16,17 @@ export class LabelIdGenerator implements IdGenerator {
     return `${this.label}_${this.counter++}`;
   }
 }
+
+export class NumberIdGenerator implements IdGenerator {
+  private counter: number;
+
+  constructor(
+    startFrom: number = 3,
+  ) {
+    this.counter = startFrom;
+  }
+
+  getId(): string {
+    return String(this.counter++);
+  }
+}

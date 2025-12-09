@@ -47,7 +47,7 @@ import type {
   ElementLikeField,
   NonPrimitiveResource,
 } from "../model/type-environment-utils.ts";
-import { LabelIdGenerator } from "../utils/id-generator";
+import { NumberIdGenerator } from "../utils/id-generator";
 import classes from "./Editor.module.css";
 import "./node.css";
 
@@ -118,11 +118,12 @@ export const FhirMappingFlow: FC<{
     setEdges((eds) => addEdge({ ...connection, animated: true }, eds));
   }, []);
 
-  const idGenerator = new LabelIdGenerator("n");
+  const nGenerator = new NumberIdGenerator();
 
   const createNewNode = useCallback(
     (opts: {
       node: Omit<Node, "id">;
+      id?: string,
       attachTo:
         | {
             target: string;
@@ -137,8 +138,8 @@ export const FhirMappingFlow: FC<{
             targetHandle?: never;
           };
     }) => {
-      const { node, attachTo } = opts;
-      const id = idGenerator.getId();
+      const { node, attachTo, id: _id } = opts;
+      const id = _id ?? nGenerator.getId();
       const edgeProperties =
         "source" in attachTo
           ? ({
@@ -163,7 +164,7 @@ export const FhirMappingFlow: FC<{
       setNodes((nds) => nds.concat({ ...node, id }));
       setEdges((eds) => eds.concat({ ...edgeProperties }));
     },
-    [idGenerator, setNodes, setEdges],
+    [nGenerator, setNodes, setEdges],
   );
 
   const onNodeConnect = useCallback(
@@ -198,6 +199,7 @@ export const FhirMappingFlow: FC<{
             const choice = await askImplementation(candidates);
             if (choice) {
               const choiceType = getNonPrimitive(choice);
+              const id = nGenerator.getId()
               return createNewNode({
                 node: {
                   type: "targetNode",
@@ -205,12 +207,14 @@ export const FhirMappingFlow: FC<{
                   data: {
                     type: choiceType,
                     inner: true,
-                    expand: false,
+                    expand: true,
+                    alias: asVariableName(choiceType!.name ?? "") + "_" + id,
                     connections,
                     onToggleNodeExpand,
                   },
                   origin: [0.5, 0.0] as [number, number],
                 },
+                id,
                 attachTo: {
                   target: connectionState.fromNode!.id,
                   targetHandle: connectionState.fromHandle!.id!,
@@ -225,19 +229,22 @@ export const FhirMappingFlow: FC<{
         }
 
         if (field.kind === "complex" || field.kind === "backbone-element") {
+          const id = nGenerator.getId()
           createNewNode({
             node: {
               type: type + "Node",
               position: xyPos,
               data: {
+                alias: asVariableName(choiceType!.name ?? "") + "_" + id,
                 type: field,
                 inner: true,
-                expand: false,
+                expand: true,
                 connections,
                 onToggleNodeExpand,
               },
               origin: [0.5, 0.0] as [number, number],
             },
+            id,
             attachTo:
               type === "target"
                 ? {
@@ -324,13 +331,11 @@ export const FhirMappingFlow: FC<{
           onNodeConnect(xyPos, connectionState, { type: "source" });
         }
       } else {
+        console.log(connectionState.fromHandle)
         const arg = await askText(
-          "Copy value",
-          asVariableName(fromNode?.data.type.name ?? "") +
-            "_" +
-            extractNumberFromString(fromNode?.id ?? "") + "." + fromHandle?.id,
+          "Copy value", fromNode?.data.alias + "." + fromHandle?.id,
         );
-        console.log(arg)
+        console.log(arg);
       }
     },
     [screenToFlowPosition],
@@ -399,7 +404,8 @@ export const Editor: FC = () => {
         type: getNonPrimitive(
           url("http://hl7.org/fhir/StructureDefinition/MotuPatient"),
         ),
-        expand: false,
+        alias: "motuPatient_1",
+        expand: true,
         connections,
         onToggleNodeExpand,
       },
@@ -412,7 +418,8 @@ export const Editor: FC = () => {
         type: getNonPrimitive(
           url("http://hl7.org/fhir/StructureDefinition/Bundle"),
         ),
-        expand: false,
+        alias: "bundle_2",
+        expand: true,
         connections,
         onToggleNodeExpand,
       },
@@ -434,11 +441,15 @@ export const Editor: FC = () => {
 
   useEffect(() => {
     setStack((prev) => {
-      const snapshotEquals = (snap: {nodes: Node[], edges: Edge[]}, nodes: Node[], edges: Edge[]) =>
+      const snapshotEquals = (
+        snap: { nodes: Node[]; edges: Edge[] },
+        nodes: Node[],
+        edges: Edge[],
+      ) =>
         snap.nodes.length === nodes.length &&
-        snap.nodes.every((n: Node, i:number) => n.id === nodes[i]?.id) &&
+        snap.nodes.every((n: Node, i: number) => n.id === nodes[i]?.id) &&
         snap.edges.length === edges.length &&
-        snap.edges.every((e: Edge, i:number) => e.id === edges[i]?.id);
+        snap.edges.every((e: Edge, i: number) => e.id === edges[i]?.id);
 
       const changed = prev.length > 0 && snapshotEquals(prev[0], nodes, edges);
 
@@ -459,15 +470,18 @@ export const Editor: FC = () => {
   const redoPressed = useKeyPress("Control+z");
 
   useEffect(() => {
-    console.log("UNDO");
     if (redoPressed) {
       if (stack.length >= 2) {
         let snapshot = stack[1];
         setStack((prev) => prev.slice(1));
-        snapshot.nodes = snapshot.nodes.map(n => {
-          const oldPos = nodes.find(x => x.id === n.id)?.position;
-          return { ...n, position: oldPos ?? n.position };
-        })
+        snapshot.nodes = snapshot.nodes.map((n) => {
+          const oldNode = nodes.find((x) => x.id === n.id);
+          return {
+            ...n,
+            data: { ...n.data, expand: oldNode?.data.expand ?? n.data.expand },
+            position: oldNode?.position ?? n.position,
+          };
+        });
         setNodes((nodes) => snapshot.nodes ?? nodes);
         setEdges((edges) => snapshot?.edges ?? edges);
       }
