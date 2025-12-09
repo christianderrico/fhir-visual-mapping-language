@@ -208,7 +208,7 @@ export const FhirMappingFlow: FC<{
                     type: choiceType,
                     inner: true,
                     expand: true,
-                    alias: asVariableName(choiceType!.name ?? "") + "_" + id,
+                    alias: asVariableName(choiceType?.name ?? "") + "_" + id,
                     connections,
                     onToggleNodeExpand,
                   },
@@ -235,7 +235,7 @@ export const FhirMappingFlow: FC<{
               type: type + "Node",
               position: xyPos,
               data: {
-                alias: asVariableName(choiceType!.name ?? "") + "_" + id,
+                alias: asVariableName(type.name ?? fieldName) + "_" + id,
                 type: field,
                 inner: true,
                 expand: true,
