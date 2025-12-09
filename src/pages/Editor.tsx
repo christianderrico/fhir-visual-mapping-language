@@ -428,7 +428,6 @@ export const Editor: FC = () => {
       ...node,
       data: {
         ...node.data,
-        expand: true,
       },
     };
   }
@@ -452,6 +451,7 @@ export const Editor: FC = () => {
             ...prev,
           ]
         : prev;
+
       return updated.length > undoRedoLimit ? updated.slice(1) : updated;
     });
   }, [edges, nodes]);
@@ -464,8 +464,11 @@ export const Editor: FC = () => {
       if (stack.length >= 2) {
         let snapshot = stack[1];
         setStack((prev) => prev.slice(1));
-        console.log(snapshot);
-        setNodes((nodes) => snapshot?.nodes ?? nodes);
+        snapshot.nodes = snapshot.nodes.map(n => {
+          const oldPos = nodes.find(x => x.id === n.id)?.position;
+          return { ...n, position: oldPos ?? n.position };
+        })
+        setNodes((nodes) => snapshot.nodes ?? nodes);
         setEdges((edges) => snapshot?.edges ?? edges);
       }
     }
