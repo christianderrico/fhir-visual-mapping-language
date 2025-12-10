@@ -62,6 +62,7 @@ import {
   asVariableName,
   extractNumberFromString,
 } from "src/utils/functions.ts";
+import { createTree } from "src/model/code-generation.ts";
 
 const nodeTypes = {
   sourceNode: SourceNode,
@@ -498,16 +499,13 @@ export const Editor: FC = () => {
 
   const onAutoLayout = () => {
     const g = new dagre.graphlib.Graph();
-    g.setGraph({ rankdir: "LR", nodesep: 50, ranksep: 100 });
+    g.setGraph({ rankdir: "LR"});
     g.setDefaultEdgeLabel(() => ({}));
-
-    const nodeWidth = 200;
-    const nodeHeight = 30;
 
     nodes.forEach((node) => {
       g.setNode(node.id, {
-        width: node.width ?? nodeWidth,
-        height: node.height ?? nodeHeight,
+        width: node.measured!.width,
+        height: node.measured!.height,
       });
     });
 
@@ -525,8 +523,8 @@ export const Editor: FC = () => {
           expand: false,
         },
         position: {
-          x: pos.x - (n.width ?? nodeWidth) / 2,
-          y: pos.y - (n.height ?? nodeHeight) / 2,
+          x: pos.x - n.measured!.width! / 2,
+          y: pos.y - n.measured!.height! / 2,
         },
       };
     });
@@ -577,6 +575,7 @@ uses "http://hl7.org/fhir/StructureDefinition/Bundle" alias Bundle as target"
                   c="dark"
                   fw="normal"
                   onClick={() => {
+                    createTree(nodes, edges)
                     console.log("APRO MODAL");
                     open();
                   }}
