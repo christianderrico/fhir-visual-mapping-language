@@ -18,6 +18,7 @@ import {
   useEdgesState,
   useKeyPress,
   useNodesState,
+  useOnViewportChange,
   useReactFlow,
   type Connection,
   type Edge,
@@ -26,7 +27,10 @@ import {
   type Node,
   type OnConnectEnd,
   type OnEdgesChange,
+  type OnInit,
   type OnNodesChange,
+  type ReactFlowInstance,
+  type Viewport,
   type XYPosition,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
@@ -96,6 +100,9 @@ export const FhirMappingFlow: FC<{
   setEdges: Dispatch<SetStateAction<Edge[]>>;
   onEdgesChange: OnEdgesChange;
   onToggleNodeExpand: (isExpanded: boolean, id?: string) => void;
+  onInit: OnInit;
+  viewport: Viewport;
+  onViewportChange: (viewport: Viewport) => void;
 }> = ({
   nodes,
   setNodes,
@@ -104,6 +111,9 @@ export const FhirMappingFlow: FC<{
   setEdges,
   onEdgesChange,
   onToggleNodeExpand,
+  onInit,
+  viewport,
+  onViewportChange,
 }) => {
   const typeEnv = useTypeEnvironment();
   const connections = createConnectionsMap(edges);
@@ -123,7 +133,7 @@ export const FhirMappingFlow: FC<{
   const createNewNode = useCallback(
     (opts: {
       node: Omit<Node, "id">;
-      id?: string,
+      id?: string;
       attachTo:
         | {
             target: string;
@@ -199,7 +209,7 @@ export const FhirMappingFlow: FC<{
             const choice = await askImplementation(candidates);
             if (choice) {
               const choiceType = getNonPrimitive(choice);
-              const id = nGenerator.getId()
+              const id = nGenerator.getId();
               return createNewNode({
                 node: {
                   type: "targetNode",
@@ -229,7 +239,7 @@ export const FhirMappingFlow: FC<{
         }
 
         if (field.kind === "complex" || field.kind === "backbone-element") {
-          const id = nGenerator.getId()
+          const id = nGenerator.getId();
           createNewNode({
             node: {
               type: type + "Node",
@@ -331,9 +341,10 @@ export const FhirMappingFlow: FC<{
           onNodeConnect(xyPos, connectionState, { type: "source" });
         }
       } else {
-        console.log(connectionState.fromHandle)
+        console.log(connectionState.fromHandle);
         const arg = await askText(
-          "Copy value", fromNode?.data.alias + "." + fromHandle?.id,
+          "Copy value",
+          fromNode?.data.alias + "." + fromHandle?.id,
         );
         console.log(arg);
       }
@@ -351,6 +362,9 @@ export const FhirMappingFlow: FC<{
         nodeTypes={nodeTypes}
         onConnect={onConnect}
         onConnectEnd={onConnectEnd}
+        onInit={onInit}
+        viewport={viewport}
+        onViewportChange={onViewportChange}
         fitView
       >
         <Background />
@@ -427,6 +441,12 @@ export const Editor: FC = () => {
   ];
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [rfInstance, setRfInstance] = useState<ReactFlowInstance | null>(null);
+  const [viewport, setViewport] = useState<Viewport | null>({
+    x: 0,
+    y: 0,
+    zoom: 1,
+  });
   const [stack, setStack] = useState<{ nodes: Node[]; edges: Edge[] }[]>([]);
   const undoRedoLimit = 10;
 
@@ -496,6 +516,31 @@ export const Editor: FC = () => {
     onToggleNodeExpand(true);
   };
 
+  const onSave = useCallback(() => {
+    if (rfInstance) {
+      const flow = rfInstance.toObject();
+      localStorage.setItem("saved-item", JSON.stringify(flow));
+    }
+  }, [rfInstance]);
+
+  const onRestore = useCallback(() => {
+    const restoreFlow = async () => {
+      const item = localStorage.getItem("saved-item");
+      if (item !== null) {
+        const flow = JSON.parse(item);
+
+        if (flow) {
+          const { x = 0, y = 0, zoom = 1 } = flow.viewport;
+          setNodes(flow.nodes || []);
+          setEdges(flow.edges || []);
+          setViewport({ x, y, zoom });
+        }
+      }
+    };
+
+    restoreFlow();
+  }, [setNodes, setViewport]);
+
   const onAutoLayout = () => {
     const g = new dagre.graphlib.Graph();
     g.setGraph({ rankdir: "LR", nodesep: 50, ranksep: 100 });
@@ -550,6 +595,10 @@ uses "http://hl7.org/fhir/StructureDefinition/Bundle" alias Bundle as target"
                   File
                 </Button>
               </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Item onClick={onSave}>Save</Menu.Item>
+                <Menu.Item onClick={onRestore}>Restore</Menu.Item>
+              </Menu.Dropdown>
             </Menu>
             <Menu>
               <Menu.Target>
@@ -632,6 +681,9 @@ uses "http://hl7.org/fhir/StructureDefinition/Bundle" alias Bundle as target"
               setEdges={setEdges}
               onEdgesChange={onEdgesChange}
               onToggleNodeExpand={onToggleNodeExpand}
+              onInit={setRfInstance}
+              viewport={viewport}
+              onViewportChange={setViewport}
             />
           </ReactFlowProvider>
         </PromptProvider>
