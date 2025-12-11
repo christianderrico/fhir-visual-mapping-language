@@ -500,7 +500,7 @@ export const Editor: FC = () => {
   const onAutoLayout = () => {
 
     const g = new dagre.graphlib.Graph();
-    g.setGraph({ rankdir: "LR"});
+    g.setGraph({rankdir: 'LR', align: 'UL', ranker: 'longest-path', nodesep: 20, marginx: 20, marginy: 30});
     g.setDefaultEdgeLabel(() => ({}));
 
     nodes.forEach((node) => {
