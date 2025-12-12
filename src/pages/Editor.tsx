@@ -332,7 +332,6 @@ export const FhirMappingFlow: FC<{
           onNodeConnect(xyPos, connectionState, { type: "source" });
         }
       } else {
-        console.log(connectionState.fromHandle)
         const arg = await askText(
           "Copy value", fromNode?.data.alias + "." + fromHandle?.id,
         );
@@ -528,11 +527,7 @@ export const Editor: FC = () => {
   };
 
   const [opened, { open, close }] = useDisclosure(false);
-  const myCodeString = `
-    map "http://termx.health/fhir/StructureMap/MotuHospitalStayToBundle" = "MotuHospitalStayToBundle"
-uses "http://hl7.org/fhir/StructureDefinition/MotuHospitalStay" alias MotuHospitalStayPatient as source
-uses "http://hl7.org/fhir/StructureDefinition/Bundle" alias Bundle as target"
-  `;
+  const [myCodeString, setMyCodeString] = useState("")
 
   return (
     <>
@@ -572,8 +567,7 @@ uses "http://hl7.org/fhir/StructureDefinition/Bundle" alias Bundle as target"
                   c="dark"
                   fw="normal"
                   onClick={() => {
-                    createGraph(nodes, edges)
-                    console.log("APRO MODAL");
+                    setMyCodeString(createGraph(nodes, edges))
                     open();
                   }}
                 >

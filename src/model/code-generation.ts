@@ -1,5 +1,6 @@
 import type { Edge, Node } from "@xyflow/react";
 import type { Field } from "src-common/fhir-types";
+import type { URL } from "src-common/strict-types";
 import type { TransformName } from "src/components/nodes/TransformNode";
 
 export type TransformParameter = {
@@ -17,14 +18,32 @@ export type ValueParameter = {
 
 export type Parameter = TransformParameter | ValueParameter;
 
-function fieldExtractType(field: Field){
-  switch(field.kind){
-    case "backbone-element":
-      return "BackboneElement"
-    case "complex":
-      return field.value
+type NodeType = "sourceNode" | "targetNode" | "both";
+
+function toFMLNodeType(type: string): NodeType {
+  switch (type) {
+    case "sourceNode":
+      return "sourceNode";
+    case "targetNode":
+      return "targetNode";
     default:
-      return field.name
+      return "both";
+  }
+}
+
+function getType(sourceType: NodeType, targetType: NodeType): NodeType {
+  if (sourceType === targetType) return sourceType;
+  return "both";
+}
+
+function fieldExtractType(field: Field) {
+  switch (field.kind) {
+    case "backbone-element":
+      return "BackboneElement";
+    case "complex":
+      return field.value;
+    default:
+      return field.name;
   }
 }
 
@@ -32,7 +51,6 @@ export function transformParamFromNode(
   node: Node,
   field?: string,
 ): TransformParameter {
-  console.log(node)
   return {
     type: "transform",
     id: node.id,
@@ -43,7 +61,11 @@ export function transformParamFromNode(
 }
 
 function isRule(node: FMLBaseEntity): node is FMLRule {
-  return "action" in node
+  return "action" in node;
+}
+
+function isNode(node: FMLBaseEntity): node is FMLNode {
+  return "url" in node;
 }
 
 export function valueParam(value: string): ValueParameter {
@@ -58,11 +80,11 @@ export function findNode(nodes: Node[], id: string): Node {
 
 class FMLBaseEntity {
   id: string;
-  type: string;
+  type: NodeType;
   father?: FMLBaseEntity;
   children: FMLBaseEntity[] = [];
 
-  constructor(id: string, type: string) {
+  constructor(id: string, type: NodeType) {
     this.id = id;
     this.type = type;
   }
@@ -73,12 +95,15 @@ class FMLBaseEntity {
 }
 
 export class FMLNode extends FMLBaseEntity {
-  resource: string
-  alias: string
+  resource: string;
+  alias: string;
+  url: URL;
+
   constructor(node: Node) {
-    super(node.id, node.type!);
+    super(node.id, toFMLNodeType(node.type!));
     this.resource = node.data.type.name;
     this.alias = node.data.alias;
+    this.url = node.data.type.url;
   }
 
   toString(): string {
@@ -89,7 +114,7 @@ export class FMLNode extends FMLBaseEntity {
 export class FMLRule extends FMLBaseEntity {
   constructor(
     id: string,
-    type: string,
+    type: NodeType,
     public readonly action: TransformName,
     public readonly rightParam: Parameter,
     public readonly leftParam: TransformParameter,
@@ -112,7 +137,7 @@ export class FMLRule extends FMLBaseEntity {
     const target = this.formatTarget();
     switch (this.action) {
       case "copy":
-        return `${this.leftParam.alias} -> ${target} = ${this.formatSource()};`;
+        return `${this.leftParam.alias} -> ${target} = ${this.formatSource()} "${this.id}";`;
       case "create":
         return `${this.leftParam.alias} -> ${target} = create("${(this.rightParam as TransformParameter).resource}") as ${(this.rightParam as TransformParameter).alias}`;
     }
@@ -151,18 +176,19 @@ export class FMLGraph {
     return all.filter((n) => !n.father);
   }
 
-  filterRoot(predicate: (n: FMLBaseEntity) => boolean): FMLBaseEntity | undefined {
-    return this.getRoots().find(predicate)
+  filterRoot(
+    predicate: (n: FMLBaseEntity) => boolean,
+  ): FMLBaseEntity | undefined {
+    return this.getRoots().find(predicate);
   }
 
   getSourceRoot(): FMLBaseEntity | undefined {
-    return this.filterRoot(n => n.type === "sourceNode")
+    return this.filterRoot((n) => n.type === "sourceNode");
   }
 
-  getTargetRoot(): FMLBaseEntity | undefined{
-    return this.filterRoot(n => n.type === "targetNode")
+  getTargetRoot(): FMLBaseEntity | undefined {
+    return this.filterRoot((n) => n.type === "targetNode");
   }
-
 }
 
 function buildRuleFromEdge(nodes: Node[], edge: Edge): FMLRule {
@@ -173,8 +199,8 @@ function buildRuleFromEdge(nodes: Node[], edge: Edge): FMLRule {
     const sourceNode = findNode(nodes, edge.source);
     const rightParam = transformParamFromNode(sourceNode, edge.sourceHandle);
     return new FMLRule(
-      `${rightParam.id}`,
-      targetNode.type!,
+      `copy_${leftParam.field}`,
+      getType(toFMLNodeType(sourceNode.type!), toFMLNodeType(targetNode.type!)),
       "copy",
       rightParam,
       leftParam,
@@ -185,7 +211,7 @@ function buildRuleFromEdge(nodes: Node[], edge: Edge): FMLRule {
   if (sourceNode.type === "transformNode") {
     const value = sourceNode.data.args[0].value;
     return new FMLRule(
-      `rule_${leftParam.id}`,
+      `copy_${leftParam.id}`,
       "targetNode",
       "copy",
       valueParam(value),
@@ -195,46 +221,83 @@ function buildRuleFromEdge(nodes: Node[], edge: Edge): FMLRule {
 
   const createParam = transformParamFromNode(sourceNode);
   return new FMLRule(
-    `${createParam.id}`,
-    targetNode.type!,
+    `create_${createParam.id}`,
+    toFMLNodeType(targetNode.type!),
     "create",
     createParam,
     leftParam,
   );
 }
 
-function printTree(
+function debugTree(node: FMLBaseEntity) {
+  console.log(node.id);
+  node.children.forEach(debugTree);
+}
+
+function isTransformParam(p: Parameter): p is TransformParameter {
+  return p.type === "transform";
+}
+
+function printVariablesTree(
   node: FMLBaseEntity,
+  printRuleTree: (level: number, lines: string[]) => string[],
   level: number = 0,
-  lines: string[] = []
-): string {
-  const indent = "  ".repeat(level);
-  const hasChildren = node.children.length > 0
-
-  if (isRule(node)) {
-    if(!hasChildren)
-      lines.push(indent + node.toString());
-    else
-      lines.push(indent + node.toString() + " then {")
-  }
-
-  node.children.forEach(child => printTree(child, level + 1, lines));
-
-  if (isRule(node) && hasChildren) {
-    lines.push(indent + `} "${node.action}_${node.id}";`);
+  lines: string[] = [],
+) {
+  if (isNode(node)) {
+    node.children.forEach((c) => {
+      if (isRule(c) && isTransformParam(c.rightParam)) {
+        const childIndent = "  ".repeat(level++);
+        const alias = c.rightParam.alias;
+        const field = c.rightParam.field;
+        if (node.alias === alias) {
+          const fieldPart = field ? `.${field} as ${field}` : "";
+          lines.push(`${childIndent}${node.alias}${fieldPart} then {`);
+          printVariablesTree(c, printRuleTree, level, lines);
+        }
+      }
+    });
+    lines = printRuleTree(level, lines);
+    for (let i = 0; i < node.children.length; i++) {
+      lines.push(`${"  ".repeat(--level)}};`);
+    }
+  } else {
+    node.children.forEach((child) =>
+      printVariablesTree(child, printRuleTree, level, lines),
+    );
   }
 
   return lines.join("\n");
 }
 
+function printRuleTree(
+  node: FMLBaseEntity,
+  level: number = 0,
+  lines: string[] = [],
+): string[] {
+  const indent = "  ".repeat(level);
+  const hasChildren = node.children.length > 0;
 
+  if (isRule(node)) {
+    if (!hasChildren) lines.push(indent + node.toString());
+    else lines.push(indent + node.toString() + " then {");
+  }
+
+  node.children.forEach((child) => printRuleTree(child, level + 1, lines));
+
+  if (isRule(node) && hasChildren) {
+    lines.push(indent + `} "${node.id}";`);
+  }
+
+  return lines;
+}
 
 function attachParentChild(
   graph: FMLGraph,
   parent: FMLBaseEntity,
   child: FMLBaseEntity,
 ) {
-  if(parent.type === child.type){
+  if (parent.type === child.type || child.type === "both") {
     parent.addChild(child);
     child.father = parent;
     graph.addEdge(parent, child);
@@ -263,23 +326,39 @@ export function createGraph(nodes: Node[], edges: Edge[]) {
     if (rule.rightParam.type === "transform") {
       const sourceNode = getOrCreateNode(findNode(nodes, rule.rightParam.id));
 
-      const father = rule.type === "sourceNode" ? sourceNode : targetNode;
-      const child = rule.type === "sourceNode" ? targetNode : sourceNode;
-
-      attachParentChild(graph, father, rule);
-      attachParentChild(graph, rule, child);
+      if (rule.type === "sourceNode") {
+        attachParentChild(graph, sourceNode, rule);
+        attachParentChild(graph, rule, targetNode);
+      } else if (rule.type === "targetNode") {
+        attachParentChild(graph, targetNode, rule);
+        attachParentChild(graph, rule, sourceNode);
+      } else if (rule.type === "both") {
+        attachParentChild(graph, sourceNode, rule);
+        attachParentChild(graph, targetNode, rule);
+      }
     } else {
       attachParentChild(graph, targetNode, rule);
     }
   });
-  const source = (graph.getSourceRoot() as FMLNode)
-  const target = (graph.getTargetRoot() as FMLNode)
+  const source = graph.getSourceRoot() as FMLNode;
+  const target = graph.getTargetRoot() as FMLNode;
 
-  console.log(printTree(source))
-
-  const lines = [`group main(source ${source.alias} : ${source.resource}, target ${target.alias} : ${target.resource}) {`]
-  const result = printTree(target!, 0, lines) + "\n}"
-  console.log(result)
-  //printTree(source!)
-
+  const lines = [
+    `map "http://hl7.org/fhir/StructureMap/prova" = "prova"`,
+    "",
+    `uses "${source.url}" alias ${source.resource} as source`,
+    `uses "${target.url}" alias ${target.resource} as source`,
+    "",
+  ];
+  lines.push(
+    `group main(source ${source.alias} : ${source.resource}, target ${target.alias} : ${target.resource}) {`,
+  );
+  const result =
+    printVariablesTree(
+      source,
+      (level, lines) => printRuleTree(target, level, lines),
+      1,
+      lines,
+    ) + "\n}";
+  return result;
 }
