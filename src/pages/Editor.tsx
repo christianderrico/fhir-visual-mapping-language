@@ -66,6 +66,7 @@ import {
   asVariableName,
   extractNumberFromString,
 } from "src/utils/functions.ts";
+import { createGraph } from "src/model/code-generation.ts";
 
 const nodeTypes = {
   sourceNode: SourceNode,
@@ -542,17 +543,15 @@ export const Editor: FC = () => {
   }, [setNodes, setViewport]);
 
   const onAutoLayout = () => {
-    const g = new dagre.graphlib.Graph();
-    g.setGraph({ rankdir: "LR", nodesep: 50, ranksep: 100 });
-    g.setDefaultEdgeLabel(() => ({}));
 
-    const nodeWidth = 200;
-    const nodeHeight = 30;
+    const g = new dagre.graphlib.Graph();
+    g.setGraph({rankdir: 'LR', align: 'UL', ranker: 'longest-path', nodesep: 20, marginx: 20, marginy: 30});
+    g.setDefaultEdgeLabel(() => ({}));
 
     nodes.forEach((node) => {
       g.setNode(node.id, {
-        width: node.width ?? nodeWidth,
-        height: node.height ?? nodeHeight,
+        width: node.measured!.width,
+        height: node.measured!.height,
       });
     });
 
@@ -565,24 +564,16 @@ export const Editor: FC = () => {
       const pos = g.node(n.id);
       return {
         ...n,
-        data: {
-          ...n.data,
-          expand: false,
-        },
         position: {
-          x: pos.x - (n.width ?? nodeWidth) / 2,
-          y: pos.y - (n.height ?? nodeHeight) / 2,
+          x: pos.x - n.measured!.width! / 2,
+          y: pos.y - n.measured!.height! / 2,
         },
       };
     });
   };
 
   const [opened, { open, close }] = useDisclosure(false);
-  const myCodeString = `
-    map "http://termx.health/fhir/StructureMap/MotuHospitalStayToBundle" = "MotuHospitalStayToBundle"
-uses "http://hl7.org/fhir/StructureDefinition/MotuHospitalStay" alias MotuHospitalStayPatient as source
-uses "http://hl7.org/fhir/StructureDefinition/Bundle" alias Bundle as target"
-  `;
+  const [myCodeString, setMyCodeString] = useState("")
 
   return (
     <>
@@ -626,7 +617,7 @@ uses "http://hl7.org/fhir/StructureDefinition/Bundle" alias Bundle as target"
                   c="dark"
                   fw="normal"
                   onClick={() => {
-                    console.log("APRO MODAL");
+                    setMyCodeString(createGraph(nodes, edges))
                     open();
                   }}
                 >

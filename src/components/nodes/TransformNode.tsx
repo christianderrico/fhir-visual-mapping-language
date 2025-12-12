@@ -8,7 +8,7 @@ import { Datatype } from "src-common/fhir-types";
 /**
  * Official transform values provided by `ValueSet/map-transform`.
  */
-type TransformName =
+export type TransformName =
   | "create"
   | "copy"
   | "truncate"
