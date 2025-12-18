@@ -13,6 +13,7 @@
     "test": "vitest run \"test\""
   },
   "dependencies": {
+    "@codemirror/highlight": "^0.19.8",
     "@dagrejs/dagre": "^1.1.8",
     "@mantine/code-highlight": "^8.3.9",
     "@mantine/core": "^8.3.6",
@@ -20,6 +21,7 @@
     "@tabler/icons-react": "^3.35.0",
     "@xyflow/react": "^12.9.2",
     "clsx": "^2.1.1",
+    "codemirror": "^6.0.2",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"
   },

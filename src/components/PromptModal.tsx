@@ -15,6 +15,12 @@ import { useCallback, useState } from "react";
 import { Datatype } from "src-common/fhir-types";
 import type { URL } from "src-common/strict-types";
 import type { ValueSetEntry } from "src-common/valueset-types";
+import { ExpressionEditor } from "./ExpressionEditor";
+import { EditorView } from "codemirror";
+import { language, syntaxHighlighting } from "@codemirror/language";
+import { expressionLanguage } from "src/language/expression-language";
+import { noNewLines } from "src/language/no-newlines-keymap";
+import { Background, Position } from "@xyflow/react";
 
 export type PromptType =
   | { type: "select"; options: string[]; title: string }
@@ -30,13 +36,15 @@ interface PromptModalProps {
   onClose: () => void;
 }
 
+export const ExpressionEditorModal: React.FC<{}> = ({}) => {};
+
 export const PromptModal: React.FC<PromptModalProps> = ({
   opened,
   prompt,
   onSubmit,
   onClose,
 }) => {
-  const [selectedValue, setSelectedValue] = useState<any>();
+  const [selectedValue, setSelectedValue] = useState<string>("");
   const [selectedDatatype, setSelectedDatatype] = useState<string | null>(null);
 
   const onModalClose = useCallback(() => {
@@ -68,9 +76,7 @@ export const PromptModal: React.FC<PromptModalProps> = ({
     }
   }, [prompt, selectedValue]);
 
-  const renderSelectOption: SelectProps["renderOption"] = ({
-    option
-  }) => (
+  const renderSelectOption: SelectProps["renderOption"] = ({ option }) => (
     <Tooltip label={option.description} position="bottom-start" withArrow>
       <Group flex="1" gap="xs">
         {option.label}
@@ -89,7 +95,7 @@ export const PromptModal: React.FC<PromptModalProps> = ({
       onClose={onModalClose}
       onSubmit={onModalSubmit}
     >
-      <Stack gap={rem(16)}>
+      <Stack gap={rem(32)}>
         {prompt?.type === "select-option" && (
           <Select
             data={Object.values(prompt.options).map(({ system, concept }) => ({
@@ -135,15 +141,33 @@ export const PromptModal: React.FC<PromptModalProps> = ({
           />
         )}
         {prompt?.type === "text" && (
-          <Flex gap={rem(8)}>
-            <TextInput
-              data-autofocus
-              defaultValue={prompt.placeholder}
-              value={selectedValue}
-              onChange={(e) => setSelectedValue(e.target.value)}
-              flex={2}
-            />
-          </Flex>
+          <ExpressionEditor
+            value={selectedValue}
+            onChange={(e) => setSelectedValue(e)}
+            extensions={[
+              language.of(expressionLanguage),
+              noNewLines,
+
+              EditorView.theme({
+                "&": {
+                  border: "1px solid #ccc",
+                  borderRadius: "4px",
+                  padding: "4px 8px",
+                },
+                ".cm-content": {
+                  whiteSpace: "nowrap",
+                  overflowX: "auto",
+                  fontFamily: "monospace",
+                },
+                ".cm-line": {
+                  padding: 0,
+                },
+                ".cm-gutters": {
+                  display: "none",
+                },
+              }),
+            ]}
+          />
         )}
         {prompt?.type === "multi" && (
           <form
