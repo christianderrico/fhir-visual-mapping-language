@@ -3,7 +3,6 @@ import { isElementLike } from "../src/model/type-environment-utils";
 import { url, type URL } from "./strict-types";
 import type {
   ValueSet,
-  ValueSetConcept,
   ValueSetEntry,
 } from "./valueset-types";
 
@@ -84,22 +83,20 @@ export function parseValuesetMap(codes: Record<URL, any>): ValueSet[] {
 export function parseStructureDefinition(
   structureDefinition: any,
 ): Resource | undefined {
-  const { kind, name, type, abstract, url, title, derivation, baseDefinition } =
+  const { kind, name, type, abstract, url, title, derivation, baseDefinition, description } =
     structureDefinition;
 
   // Skip profiles by comparing their name with the type (heuristic)
-  if (!name.includes(type)) return undefined;
+  if (!name.includes(type) && !type.includes(name)) return undefined;
+  
   const snapshot =
     structureDefinition.snapshot ?? structureDefinition.differential;
-
-  // if (snapshot === undefined) {
-  //   throw new UndefinedSnapshotError(name);
-  // }
 
   if (kind === "primitive-type") {
     return {
       url,
       kind: "primitive-type",
+      description,
       title,
       name,
       derivation,
@@ -158,6 +155,7 @@ export function parseStructureDefinition(
     kind: kind!,
     fields,
     name,
+    description,
     abstract,
     derivation,
     baseDefinition,

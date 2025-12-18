@@ -7,6 +7,7 @@ import {
   Modal,
   ScrollArea,
   Tabs,
+  Text
 } from "@mantine/core";
 import dagre from "@dagrejs/dagre";
 import {
@@ -59,14 +60,12 @@ import { useTypeEnvironment } from "../hooks/useTypeEnvironment";
 import { getNonPrimitiveType as _getNonPrimitiveType } from "../model/type-environment-utils";
 import { PromptProvider, usePrompt } from "../providers/PromptProvider";
 import { url } from "src-common/strict-types.ts";
-import { Datatype } from "src-common/fhir-types.ts";
+import { Datatype, type Resource } from "src-common/fhir-types.ts";
 import { useDisclosure } from "@mantine/hooks";
 import { CodeHighlight } from "@mantine/code-highlight";
-import {
-  asVariableName,
-  extractNumberFromString,
-} from "src/utils/functions.ts";
-import { createGraph } from "src/model/code-generation.ts";
+import { asVariableName } from "src/utils/functions.ts";
+import { createGraph } from "src/model/code-generation/code-generation.ts";
+import { useLocation, type Location } from "react-router-dom";
 
 const nodeTypes = {
   sourceNode: SourceNode,
@@ -78,7 +77,6 @@ function createConnectionsMap(edges: Edge[]): Map<string, string[]> {
   const map = new Map<string, string[]>();
 
   edges.forEach(({ source, sourceHandle, target, targetHandle }) => {
-    // Funzione di utilità per aggiungere un handle alla mappa
     const addHandle = (key: string, handle: string | null | undefined) => {
       if (!handle) return;
       const handles = map.get(key) ?? [];
@@ -319,8 +317,6 @@ export const FhirMappingFlow: FC<{
           });
         }
 
-        // Handle primitive types
-        // e.g.: dragging from Patient.gender, Bundle.total, etc.
         if (fromNode.type === "targetNode" && field.kind === "primitive") {
           const arg = await askText("Insert value for this field");
           return createNewNode({
@@ -342,12 +338,10 @@ export const FhirMappingFlow: FC<{
           onNodeConnect(xyPos, connectionState, { type: "source" });
         }
       } else {
-        console.log(connectionState.fromHandle);
         const arg = await askText(
           "Copy value",
-          fromNode?.data.alias + "." + fromHandle?.id,
+          fromNode?.data.alias + (fromHandle?.id ? "." + fromHandle?.id : ""),
         );
-        console.log(arg);
       }
     },
     [screenToFlowPosition],
@@ -375,7 +369,14 @@ export const FhirMappingFlow: FC<{
   );
 };
 
+interface EditorProps {
+  templateName: string;
+  source: Resource;
+  target: Resource;
+}
+
 export const Editor: FC = () => {
+  const state: EditorProps = useLocation().state;
   const typeEnv = useTypeEnvironment();
   const getNonPrimitive = useCallback(_getNonPrimitiveType(typeEnv), [
     _getNonPrimitiveType,
@@ -412,28 +413,24 @@ export const Editor: FC = () => {
 
   const initialNodes: Node[] = [
     {
-      id: "n1",
+      id: "1",
       type: "sourceNode",
       position: { x: 0, y: 0 },
       data: {
-        type: getNonPrimitive(
-          url("http://hl7.org/fhir/StructureDefinition/MotuPatient"),
-        ),
-        alias: "motuPatient_1",
+        type: state.source,
+        alias: `${asVariableName(state.source.name)}_1`,
         expand: true,
         connections,
         onToggleNodeExpand,
       },
     },
     {
-      id: "n2",
+      id: "2",
       type: "targetNode",
       position: { x: 900, y: 0 },
       data: {
-        type: getNonPrimitive(
-          url("http://hl7.org/fhir/StructureDefinition/Bundle"),
-        ),
-        alias: "bundle_2",
+        type: state.target,
+        alias: `${asVariableName(state.source.name)}_2`,
         expand: true,
         connections,
         onToggleNodeExpand,
@@ -543,9 +540,16 @@ export const Editor: FC = () => {
   }, [setNodes, setViewport]);
 
   const onAutoLayout = () => {
-
     const g = new dagre.graphlib.Graph();
-    g.setGraph({rankdir: 'LR', align: 'UL', ranker: 'network-simplex', nodesep: 80, marginx: 20, marginy: 30, ranksep:120});
+    g.setGraph({
+      rankdir: "LR",
+      align: "UL",
+      ranker: "network-simplex",
+      nodesep: 80,
+      marginx: 20,
+      marginy: 30,
+      ranksep: 120,
+    });
     g.setDefaultEdgeLabel(() => ({}));
 
     nodes.forEach((node) => {
@@ -573,7 +577,7 @@ export const Editor: FC = () => {
   };
 
   const [opened, { open, close }] = useDisclosure(false);
-  const [myCodeString, setMyCodeString] = useState("")
+  const [myCodeString, setMyCodeString] = useState("");
 
   return (
     <>
@@ -617,13 +621,20 @@ export const Editor: FC = () => {
                   c="dark"
                   fw="normal"
                   onClick={() => {
-                    setMyCodeString(createGraph(nodes, edges))
+                    setMyCodeString(
+                      createGraph(state.templateName, nodes, edges),
+                    );
                     open();
                   }}
                 >
                   Preview
                 </Button>
               </Menu.Target>
+            </Menu>
+            <Menu>
+              <Text c="dimmed" fw={500}>
+              | {state.templateName}
+            </Text>
             </Menu>
           </Group>
           <Modal

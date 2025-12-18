@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "pre-build": "npx tsx scripts/generate.ts",
-    "clean": "node -e \"var fs = require('fs'); process.argv.slice(1).map((fpath) => fs.rmdirSync(fpath, { recursive: true })); process.exit(0);\"",
+    "clean": "rm -rf src-generated",
+    "cleanw": "rmdir /s /q src-generated",
     "test": "vitest run \"test\""
   },
   "dependencies": {
@@ -17,15 +18,21 @@
     "@mantine/code-highlight": "^8.3.9",
     "@mantine/core": "^8.3.6",
     "@mantine/hooks": "^8.3.6",
+    "@monaco-editor/react": "^4.7.0",
     "@tabler/icons-react": "^3.35.0",
+    "@uiw/react-codemirror": "^4.25.4",
     "@xyflow/react": "^12.9.2",
     "clsx": "^2.1.1",
+    "lodash": "^4.17.21",
+    "monaco-editor": "^0.55.1",
     "react": "^19.1.1",
-    "react-dom": "^19.1.1"
+    "react-dom": "^19.1.1",
+    "react-router-dom": "^7.11.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.36.0",
-    "@types/node": "^24.6.0",
+    "@types/lodash": "^4.17.21",
+    "@types/node": "^24.10.4",
     "@types/node-fetch": "^2.6.13",
     "@types/react": "^19.1.16",
     "@types/react-dom": "^19.1.9",

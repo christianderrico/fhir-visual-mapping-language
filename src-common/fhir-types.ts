@@ -31,6 +31,7 @@ interface BaseResource {
    */
   title: string;
   abstract: boolean;
+  description: string;
   derivation?: string;
   baseDefinition?: URL;
 }
