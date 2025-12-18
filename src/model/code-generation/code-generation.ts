@@ -63,7 +63,7 @@ export function createGraph(
     `map "http://hl7.org/fhir/StructureMap/${templateName}" = "${templateName}"`,
     "",
     `uses "${source.url}" alias ${source.resource} as source`,
-    `uses "${target.url}" alias ${target.resource} as source`,
+    `uses "${target.url}" alias ${target.resource} as target`,
     "",
   ];
   lines.push(
