@@ -1,9 +1,19 @@
 import { type Edge, type Node } from "@xyflow/react";
 import { FMLGraph, FMLNode } from "./fml-entities";
 import { findNode } from "./fml-utils";
-import { attachParentChild, buildRuleFromEdge, printVariablesTree, collectDependencies, printRuleTree } from "./fml-graph-building-utils";
+import {
+  attachParentChild,
+  buildRuleFromEdge,
+  printVariablesTree,
+  collectDependencies,
+  printRuleTree,
+} from "./fml-graph-building-utils";
 
-export function createGraph(templateName: string, nodes: Node[], edges: Edge[]) {
+export function createGraph(
+  templateName: string,
+  nodes: Node[],
+  edges: Edge[],
+) {
   const graph = new FMLGraph();
   const nodeMap = new Map<string, FMLNode>();
 
@@ -29,13 +39,11 @@ export function createGraph(templateName: string, nodes: Node[], edges: Edge[]) 
         attachParentChild(sourceNode, rule);
         attachParentChild(rule, targetNode);
       } else if (rule.type === "targetNode") {
-        const parent = rule.isReference ? sourceNode : targetNode
-        const child = rule.isReference ? targetNode : sourceNode
+        const parent = rule.isReference ? sourceNode : targetNode;
+        const child = rule.isReference ? targetNode : sourceNode;
         attachParentChild(parent, rule);
-        if(!rule.isReference)
-          attachParentChild(rule, child);
-        else
-          attachParentChild(child, rule);
+        if (!rule.isReference) attachParentChild(rule, child);
+        else attachParentChild(child, rule);
       } else if (rule.type === "both") {
         attachParentChild(sourceNode, rule);
         attachParentChild(targetNode, rule);
@@ -44,10 +52,12 @@ export function createGraph(templateName: string, nodes: Node[], edges: Edge[]) 
       attachParentChild(targetNode, rule);
     }
   });
-  const source = graph.getSourceRoot() as FMLNode;
-  const target = graph.getTargetRoot() as FMLNode;
-
-  const dependencies = collectDependencies(target, (id) => nodeMap.get(id)!)
+  const sourceRoot = graph.getSourceRoot();
+  const targetRoot = graph.getTargetRoot();
+  const source = (sourceRoot ??
+    getOrCreateNode(findNode(nodes, "1"))) as FMLNode;
+  const target = (targetRoot ??
+    getOrCreateNode(findNode(nodes, "2"))) as FMLNode;
 
   const lines = [
     `map "http://hl7.org/fhir/StructureMap/${templateName}" = "${templateName}"`,
@@ -59,12 +69,18 @@ export function createGraph(templateName: string, nodes: Node[], edges: Edge[]) 
   lines.push(
     `group main(source ${source.alias} : ${source.resource}, target ${target.alias} : ${target.resource}) {`,
   );
-  const result =
-    printVariablesTree(
-      source,
-      (level, lines) => printRuleTree(target, dependencies, level, lines),
-      1,
-      lines,
-    ) + "\n}";
-  return result;
+  if (!sourceRoot || !targetRoot) {
+    lines.push("}");
+    return lines.join("\n");
+  } else {
+    const dependencies = collectDependencies(target, (id) => nodeMap.get(id)!);
+    const result =
+      printVariablesTree(
+        source,
+        (level, lines) => printRuleTree(target, dependencies, level, lines),
+        1,
+        lines,
+      ) + "\n}";
+    return result;
+  }
 }

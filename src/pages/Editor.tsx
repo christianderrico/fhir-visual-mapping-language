@@ -7,7 +7,7 @@ import {
   Modal,
   ScrollArea,
   Tabs,
-  Text
+  Text,
 } from "@mantine/core";
 import dagre from "@dagrejs/dagre";
 import {
@@ -65,7 +65,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { CodeHighlight } from "@mantine/code-highlight";
 import { asVariableName } from "src/utils/functions.ts";
 import { createGraph } from "src/model/code-generation/code-generation.ts";
-import { useLocation, type Location } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 const nodeTypes = {
   sourceNode: SourceNode,
@@ -633,8 +633,8 @@ export const Editor: FC = () => {
             </Menu>
             <Menu>
               <Text c="dimmed" fw={500}>
-              | {state.templateName}
-            </Text>
+                | {state.templateName}
+              </Text>
             </Menu>
           </Group>
           <Modal
