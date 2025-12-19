@@ -42,18 +42,16 @@ function useProvidePrompt() {
         options,
         title: "Select option",
       }),
-    askSelect: (options: string[]) =>
-      ask<string | undefined>({ type: "select", options, title: "Pick one" }),
     askImplementation: (options: URL[]) =>
       ask<URL | undefined>({
         type: "select-implementation",
         options,
         title: "Select implementation",
       }),
+    askExpression: (title: string, placeholder?: string) =>
+      ask<any>({ type: "expression", title, placeholder }),
     askText: (title: string, placeholder?: string) =>
-      ask<{ value: string; }>({ type: "text", title, placeholder }),
-    askMulti: (fields: any[]) =>
-      ask({ type: "multi", fields, title: "Fill form" }),
+      ask<string>({ type: "text", title, placeholder }),
     modalProps: {
       opened: !!state.prompt,
       prompt: state.prompt,

@@ -67,6 +67,7 @@ import {
   extractNumberFromString,
 } from "src/utils/functions.ts";
 import { createGraph } from "src/model/code-generation.ts";
+import { parser } from "src-generated/grammar/fhir-expression-parser.ts";
 
 const nodeTypes = {
   sourceNode: SourceNode,
@@ -301,7 +302,7 @@ export const FhirMappingFlow: FC<{
           field.valueSet.strength === "required"
         ) {
           const opts = typeEnv.getOptions(field.valueSet.url);
-          const opt = await askOption(Object.values(opts));
+          const opt = await askOption(opts);
           return createNewNode({
             node: {
               type: "transformNode",
@@ -323,6 +324,7 @@ export const FhirMappingFlow: FC<{
         // e.g.: dragging from Patient.gender, Bundle.total, etc.
         if (fromNode.type === "targetNode" && field.kind === "primitive") {
           const arg = await askText("Insert value for this field");
+          console.log(parser.parse(arg));
           return createNewNode({
             node: {
               type: "transformNode",
@@ -543,9 +545,15 @@ export const Editor: FC = () => {
   }, [setNodes, setViewport]);
 
   const onAutoLayout = () => {
-
     const g = new dagre.graphlib.Graph();
-    g.setGraph({rankdir: 'LR', align: 'UL', ranker: 'longest-path', nodesep: 20, marginx: 20, marginy: 30});
+    g.setGraph({
+      rankdir: "LR",
+      align: "UL",
+      ranker: "longest-path",
+      nodesep: 20,
+      marginx: 20,
+      marginy: 30,
+    });
     g.setDefaultEdgeLabel(() => ({}));
 
     nodes.forEach((node) => {
@@ -573,7 +581,7 @@ export const Editor: FC = () => {
   };
 
   const [opened, { open, close }] = useDisclosure(false);
-  const [myCodeString, setMyCodeString] = useState("")
+  const [myCodeString, setMyCodeString] = useState("");
 
   return (
     <>
@@ -617,7 +625,7 @@ export const Editor: FC = () => {
                   c="dark"
                   fw="normal"
                   onClick={() => {
-                    setMyCodeString(createGraph(nodes, edges))
+                    setMyCodeString(createGraph(nodes, edges));
                     open();
                   }}
                 >

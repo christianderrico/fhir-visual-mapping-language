@@ -16,13 +16,14 @@ import type { URL } from "src-common/strict-types";
 import type { ValueSetEntry } from "src-common/valueset-types";
 import { ExpressionEditor } from "./ExpressionEditor";
 import { EditorView } from "codemirror";
+import { parser } from "src-generated/grammar/fhir-expression-parser";
 
 export type PromptType =
   | { type: "select"; options: string[]; title: string }
   | { type: "select-option"; options: ValueSetEntry[]; title: string }
   | { type: "select-implementation"; options: URL[]; title: string }
   | { type: "text"; title: string; placeholder?: string }
-  | { type: "multi"; fields: { label: string; name: string }[]; title: string };
+  | { type: "expression"; title: string; placeholder?: string };
 
 interface PromptModalProps {
   opened: boolean;
@@ -31,48 +32,42 @@ interface PromptModalProps {
   onClose: () => void;
 }
 
-export const PromptModal: React.FC<PromptModalProps> = ({
+export function PromptModal({
   opened,
   prompt,
   onSubmit,
   onClose,
-}) => {
-  const [selectedValue, setSelectedValue] = useState<string>(
-    'append(src.field, "x")',
-  );
-  const [selectedDatatype, setSelectedDatatype] = useState<string | null>(null);
+}: PromptModalProps) {
+  if (prompt === undefined) return;
 
-  const onModalClose = useCallback(() => {
-    setSelectedValue(undefined);
-    onClose();
-  }, [onClose]);
+  const [value, setValue] = useState(() => {
+    switch (prompt.type) {
+      case "text":
+      case "expression":
+        return "";
+      case "select":
+      case "select-option":
+      case "select-implementation":
+        return (prompt as Extract<PromptType, { type: "select" }>).options[0];
+    }
+  });
 
+  const onModalClose = onClose;
   const onModalSubmit = useCallback(
     (e: React.FormEvent<HTMLDivElement>) => {
       e.preventDefault();
-
-      if (prompt?.type === "text") {
-        onSubmit({ value: selectedValue, datatype: selectedDatatype });
-      } else {
-        onSubmit(selectedValue);
-      }
-      setSelectedValue(undefined);
-      setSelectedDatatype(null);
+      if (prompt.type === "expression") return onSubmit(parser.parse(value));
+      onSubmit(value);
     },
-    [onSubmit, selectedValue],
+    [onSubmit, value],
   );
 
-  const validate = useCallback(() => {
-    switch (prompt?.type) {
-      case "select":
-        return selectedValue !== undefined;
-      default:
-        return true;
-    }
-  }, [prompt, selectedValue]);
-
   const renderSelectOption: SelectProps["renderOption"] = ({ option }) => (
-    <Tooltip label={option.description} position="bottom-start" withArrow>
+    <Tooltip
+      label={(option as any).description}
+      position="bottom-start"
+      withArrow
+    >
       <Group flex="1" gap="xs">
         {option.label}
         <Text c="dimmed" fz="xs">
@@ -104,8 +99,8 @@ export const PromptModal: React.FC<PromptModalProps> = ({
             }))}
             searchable
             autoSelectOnBlur
-            value={selectedValue}
-            onChange={(value) => setSelectedValue(value)}
+            value={value}
+            onChange={(value) => value && setValue(value)}
             renderOption={renderSelectOption}
             clearable
           />
@@ -113,14 +108,14 @@ export const PromptModal: React.FC<PromptModalProps> = ({
         {prompt?.type === "select-implementation" && (
           <Select
             data={prompt.options}
-            value={selectedValue}
+            value={value}
             searchable
             autoSelectOnBlur
-            onChange={(value) => setSelectedValue(value)}
+            onChange={(value) => value && setValue(value)}
             renderOption={({ option, checked }) => (
               <>
                 <span>{option.value.split("/").splice(-1)}</span>
-                <Text fz="xs" color="dimmed">
+                <Text fz="xs" c="dimmed">
                   {option.value}
                 </Text>
               </>
@@ -130,17 +125,17 @@ export const PromptModal: React.FC<PromptModalProps> = ({
         {prompt?.type === "select" && (
           <Select
             data={prompt.options}
-            value={selectedValue}
+            value={value}
             searchable
             autoSelectOnBlur
-            onChange={(value) => setSelectedValue(value)}
+            onChange={(value) => value && setValue(value)}
           />
         )}
         {prompt?.type === "text" && (
           <Box h="500px">
             <ExpressionEditor
-              value={selectedValue}
-              onChange={(e) => setSelectedValue(e)}
+              value={value!}
+              onChange={(e) => setValue(e)}
               extensions={[
                 EditorView.theme({
                   "&": {
@@ -164,29 +159,15 @@ export const PromptModal: React.FC<PromptModalProps> = ({
             />
           </Box>
         )}
-        {prompt?.type === "multi" && (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              const formData = new FormData(e.currentTarget);
-              onSubmit(Object.fromEntries(formData.entries()));
-            }}
-          >
-            {prompt.fields.map((f) => (
-              <TextInput key={f.name} name={f.name} label={f.label} />
-            ))}
-            <Button type="submit">Submit</Button>
-          </form>
-        )}
         <Group gap={rem(16)} justify="end">
           <Button variant="white" color="red" onClick={onModalClose}>
             Cancel
           </Button>
-          <Button type="submit" disabled={!validate()}>
+          <Button type="submit" disabled={false}>
             Confirm
           </Button>
         </Group>
       </Stack>
     </Modal>
   );
-};
+}

@@ -1,19 +1,11 @@
 import { useEffect, useRef } from "react";
-import { basicSetup, EditorView } from "codemirror";
+import { EditorView } from "codemirror";
 import { EditorState } from "@codemirror/state";
-import { autocompletion, closeBrackets } from "@codemirror/autocomplete";
-import {
-  bracketMatching,
-  syntaxHighlighting,
-  syntaxTree,
-} from "@codemirror/language";
-import entries from "src-generated/valueset-metadata/map-transform.json";
 import { noNewLines } from "src/language/no-newlines-keymap";
 import { useTypeEnvironment } from "src/hooks/useTypeEnvironment";
 import { SimpleScopeEnvironment } from "src/model/scope-environment";
 import { url } from "src-common/strict-types";
 import { expressionLanguageSupport } from "src/language/expression-language-support";
-import { defaultHighlightStyle } from "@codemirror/language";
 
 type Props = {
   value: string;
@@ -41,14 +33,6 @@ export function ExpressionEditor({ value, onChange, extensions = [] }: Props) {
   // Create editor once
   useEffect(() => {
     if (!ref.current) return;
-
-    const transformFunctions = entries.include[0].concept.map(
-      ({ code, definition }) => ({
-        label: code,
-        type: "function",
-        info: definition,
-      }),
-    );
 
     const state = EditorState.create({
       doc: value,
