@@ -55,9 +55,7 @@ const expressionAutocompletion =
       node.name === "Identifier" &&
       (node.parent?.name === "Variable" ||
         node.parent?.name === "TransformCall");
-
     const isPointBlank = () => node.name === "Program";
-
     const isPropertyAccess = () =>
       (node.name === "Identifier" && node.parent?.name === "Property") ||
       node.name === "PropertyAccess";
@@ -93,6 +91,8 @@ const expressionAutocompletion =
       const lastPropertyAccess = fieldAccessNode.lastChild!;
       const lastProperty = lastPropertyAccess.lastChild!;
 
+      // If we're in the middle of writing a field, complete from that.
+      // Otherwise just start from "."
       const completeFrom =
         lastProperty.name === "Property" ? lastProperty.from : ctx.pos;
 
@@ -142,6 +142,16 @@ const expressionAutocompletion =
 
     return null;
   };
+
+function findParent(
+  node: SyntaxNode,
+  query: { name: Exclude<string, "Program"> },
+): SyntaxNode | undefined {
+  if (node.name === "Program" || node.parent === null) return undefined;
+  if (node.name === query.name) return node;
+  return findParent(node.parent, query);
+}
+
 const expressionHighlightStyle = HighlightStyle.define([
   { tag: t.variableName, color: "#1c1d68" },
   { tag: t.propertyName, color: "#1c1d68", fontStyle: "italic" },
@@ -176,13 +186,4 @@ export function expressionLanguageSupport(
       : []),
   ];
   return new LanguageSupport(expressionLanguage, [extensions]);
-}
-
-function findParent(
-  node: SyntaxNode,
-  query: { name: Exclude<string, "Program"> },
-): SyntaxNode | undefined {
-  if (node.name === "Program" || node.parent === null) return undefined;
-  if (node.name === query.name) return node;
-  return findParent(node.parent, query);
 }
