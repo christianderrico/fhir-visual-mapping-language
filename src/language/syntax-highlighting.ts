@@ -11,5 +11,5 @@ export const expressionHighlightStyle = HighlightStyle.define([
 
   { tag: t.paren, color: "#24292e" },
   { tag: t.separator, color: "#24292e" },
-  { tag: t.derefOperator, color: "#24292e" }
+  { tag: t.derefOperator, color: "#24292e" },
 ]);
