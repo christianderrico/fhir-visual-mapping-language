@@ -32,6 +32,10 @@ export function ExpressionEditor({ value, onChange, extensions = [] }: Props) {
       "motuPatient_1",
       url("http://hl7.org/fhir/StructureDefinition/MotuPatient"),
     );
+    scopeEnv.set(
+      "patient",
+      url("http://hl7.org/fhir/StructureDefinition/Patient"),
+    );
   }, []);
 
   // Create editor once
@@ -51,30 +55,13 @@ export function ExpressionEditor({ value, onChange, extensions = [] }: Props) {
       extensions: [
         // closeBrackets(),
         // bracketMatching(),
-        expressionLanguageSupport(),
-        // syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
-        noNewLines,
-        autocompletion({
-          override: [
-            (ctx) => {
-              let word = ctx.matchBefore(/\w*/)!;
-              const node = syntaxTree(ctx.state).resolveInner(ctx.pos, -1);
-              console.log(syntaxTree(ctx.state));
-              console.log(node);
-              if (word.from == word.to && !ctx.explicit) return null;
-              return {
-                from: word.from,
-                options: [
-                  ...transformFunctions,
-                  ...scopeEnv.getAll().map((value) => ({
-                    label: value,
-                    type: "variable",
-                  })),
-                ],
-              };
-            },
-          ],
+        expressionLanguageSupport({
+          autocompletion: {
+            typeEnvironment: typeEnv,
+            scopeEnvironment: scopeEnv,
+          },
         }),
+        noNewLines,
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
             const newValue = update.state.doc.toString();

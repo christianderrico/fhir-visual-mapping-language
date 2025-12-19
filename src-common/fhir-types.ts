@@ -82,6 +82,23 @@ export function isField(obj: any): obj is Field {
   );
 }
 
+export function describeFieldType(field: Field): string {
+  switch(field.kind) {
+    case "primitive":
+      return field.value;
+    case "complex":
+      return field.value.replace("http://hl7.org/fhir/StructureDefinition/", "")
+    case "backbone-element":
+      return "BackboneElement"
+    case "element":
+      return "Element"
+    case "reference":
+      return field.value.join("|")
+    case "alternatives":
+      return field.value.map(describeFieldType).join("|")
+  }
+}
+
 /**
  * Represents all the possible type of data that the FHIR Mapping Language can
  * use and manage.

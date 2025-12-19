@@ -30,12 +30,24 @@ TransformArg {
 /* ----------------- */
 
 Reference {
-  Identifier
+  Variable
 | FieldAccess
 }
 
+Variable {
+  Identifier
+}
+
 FieldAccess {
-  Identifier ("." Identifier)+
+  Variable PropertyAccess+
+}
+
+PropertyAccess {
+  "." Property
+}
+
+Property {
+  Identifier
 }
 
 /* ----------------- */
