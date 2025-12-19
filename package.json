@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
+    "build:grammar": "lezer-generator --typeScript src/language/fhir-expression.grammar -o src-generated/grammar/fhir-expression-parser.ts",
     "pre-build": "npx tsx scripts/generate.ts",
     "clean": "node -e \"var fs = require('fs'); process.argv.slice(1).map((fpath) => fs.rmdirSync(fpath, { recursive: true })); process.exit(0);\"",
     "test": "vitest run \"test\""
@@ -15,6 +16,7 @@
   "dependencies": {
     "@codemirror/highlight": "^0.19.8",
     "@dagrejs/dagre": "^1.1.8",
+    "@lezer/lr": "^1.4.5",
     "@mantine/code-highlight": "^8.3.9",
     "@mantine/core": "^8.3.6",
     "@mantine/hooks": "^8.3.6",
@@ -27,6 +29,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.36.0",
+    "@lezer/generator": "^1.8.0",
     "@types/node": "^24.6.0",
     "@types/node-fetch": "^2.6.13",
     "@types/react": "^19.1.16",

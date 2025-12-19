@@ -8,6 +8,7 @@ import type { URL } from "src-common/strict-types";
 export type URLOrDefinedType = URL | DefinedType;
 
 export interface TypeEnvironment {
+
   hasType(url: URLOrDefinedType): boolean;
   getType(url: URLOrDefinedType): Resource | undefined;
   getTypeFields(url: URLOrDefinedType): Record<string, Field> | undefined;

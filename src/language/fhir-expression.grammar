@@ -1,0 +1,75 @@
+@top Program { Expression }
+
+@skip { whitespace }
+
+Expression {
+  TransformCall
+| Reference
+| Literal
+}
+
+/* ----------------- */
+/* Transform calls   */
+/* ----------------- */
+
+TransformCall {
+  Identifier "(" TransformArgs? ")"
+}
+
+TransformArgs {
+  TransformArg ("," TransformArg)*
+}
+
+TransformArg {
+  Reference
+| Literal
+}
+
+/* ----------------- */
+/* References        */
+/* ----------------- */
+
+Reference {
+  Identifier
+| FieldAccess
+}
+
+FieldAccess {
+  Identifier ("." Identifier)+
+}
+
+/* ----------------- */
+/* Literals          */
+/* ----------------- */
+
+Literal {
+  String
+| Decimal
+| Integer
+| Boolean
+}
+
+/* ----------------- */
+/* Tokens            */
+/* ----------------- */
+
+@tokens {
+
+  @precedence { Decimal, Integer }
+
+  Identifier { $[A-Za-z_]$[A-Za-z0-9_]* }
+
+  String { '"' (!["\\] | "\\" _)* '"' }
+
+  Decimal {
+    $[0-9]* "." $[0-9]+
+  }
+
+  Integer {
+    $[0-9]+
+  }
+
+  whitespace { $[ \t\n\r]+ }
+}
+
+Boolean { @specialize<Identifier, "true" | "false"> }

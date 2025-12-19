@@ -9,18 +9,13 @@ import {
   type SelectProps,
   Text,
   Tooltip,
-  Flex,
+  Box,
 } from "@mantine/core";
 import { useCallback, useState } from "react";
-import { Datatype } from "src-common/fhir-types";
 import type { URL } from "src-common/strict-types";
 import type { ValueSetEntry } from "src-common/valueset-types";
 import { ExpressionEditor } from "./ExpressionEditor";
 import { EditorView } from "codemirror";
-import { language, syntaxHighlighting } from "@codemirror/language";
-import { expressionLanguage } from "src/language/expression-language";
-import { noNewLines } from "src/language/no-newlines-keymap";
-import { Background, Position } from "@xyflow/react";
 
 export type PromptType =
   | { type: "select"; options: string[]; title: string }
@@ -36,15 +31,15 @@ interface PromptModalProps {
   onClose: () => void;
 }
 
-export const ExpressionEditorModal: React.FC<{}> = ({}) => {};
-
 export const PromptModal: React.FC<PromptModalProps> = ({
   opened,
   prompt,
   onSubmit,
   onClose,
 }) => {
-  const [selectedValue, setSelectedValue] = useState<string>("");
+  const [selectedValue, setSelectedValue] = useState<string>(
+    'append(src.field, "x")',
+  );
   const [selectedDatatype, setSelectedDatatype] = useState<string | null>(null);
 
   const onModalClose = useCallback(() => {
@@ -94,6 +89,7 @@ export const PromptModal: React.FC<PromptModalProps> = ({
       opened={opened}
       onClose={onModalClose}
       onSubmit={onModalSubmit}
+      size="xl"
     >
       <Stack gap={rem(32)}>
         {prompt?.type === "select-option" && (
@@ -141,33 +137,32 @@ export const PromptModal: React.FC<PromptModalProps> = ({
           />
         )}
         {prompt?.type === "text" && (
-          <ExpressionEditor
-            value={selectedValue}
-            onChange={(e) => setSelectedValue(e)}
-            extensions={[
-              language.of(expressionLanguage),
-              noNewLines,
-
-              EditorView.theme({
-                "&": {
-                  border: "1px solid #ccc",
-                  borderRadius: "4px",
-                  padding: "4px 8px",
-                },
-                ".cm-content": {
-                  whiteSpace: "nowrap",
-                  overflowX: "auto",
-                  fontFamily: "monospace",
-                },
-                ".cm-line": {
-                  padding: 0,
-                },
-                ".cm-gutters": {
-                  display: "none",
-                },
-              }),
-            ]}
-          />
+          <Box h="500px">
+            <ExpressionEditor
+              value={selectedValue}
+              onChange={(e) => setSelectedValue(e)}
+              extensions={[
+                EditorView.theme({
+                  "&": {
+                    border: "1px solid #ccc",
+                    borderRadius: "4px",
+                    padding: "4px 8px",
+                  },
+                  ".cm-content": {
+                    whiteSpace: "nowrap",
+                    overflowX: "auto",
+                    fontFamily: "monospace",
+                  },
+                  ".cm-line": {
+                    padding: 0,
+                  },
+                  ".cm-gutters": {
+                    display: "none",
+                  },
+                }),
+              ]}
+            />
+          </Box>
         )}
         {prompt?.type === "multi" && (
           <form
