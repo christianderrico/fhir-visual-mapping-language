@@ -325,6 +325,7 @@ export const FhirMappingFlow: FC<{
         if (fromNode.type === "targetNode" && field.kind === "primitive") {
           const arg = await askText("Insert value for this field");
           console.log(parser.parse(arg));
+
           return createNewNode({
             node: {
               type: "transformNode",

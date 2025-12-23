@@ -1,23 +1,39 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { EditorView } from "codemirror";
 import { EditorState } from "@codemirror/state";
-import { noNewLines } from "src/language/no-newlines-keymap";
+import { keymap } from "@codemirror/view";
+import { forEachDiagnostic } from "@codemirror/lint";
 import { useTypeEnvironment } from "src/hooks/useTypeEnvironment";
 import { SimpleScopeEnvironment } from "src/model/scope-environment";
 import { url } from "src-common/strict-types";
 import { expressionLanguageSupport } from "src/language/expression-language-support";
+import { Badge, Tooltip } from "@mantine/core";
+import { IconInfoCircle } from "@tabler/icons-react";
 
 type Props = {
   value: string;
   onChange: (value: string) => void;
+  onValidate?: () => void;
   extensions?: any[];
 };
 
-export function ExpressionEditor({ value, onChange, extensions = [] }: Props) {
+type Diagnostic = {
+  from: number;
+  to: number;
+  message: string;
+};
+
+export function ExpressionEditor({
+  value,
+  onChange,
+  onValidate,
+  extensions = [],
+}: Props) {
   const ref = useRef<HTMLDivElement | null>(null);
   const viewRef = useRef<EditorView | null>(null);
   const typeEnv = useTypeEnvironment();
   const scopeEnv = new SimpleScopeEnvironment();
+  const [diagnostics, setDiagnostics] = useState<Diagnostic[]>([]);
 
   useEffect(() => {
     scopeEnv.set(
@@ -34,33 +50,61 @@ export function ExpressionEditor({ value, onChange, extensions = [] }: Props) {
   useEffect(() => {
     if (!ref.current) return;
 
+    function collectDiagnostics() {
+      const result = [] as Diagnostic[];
+      forEachDiagnostic(viewRef.current!.state, (d) => result.push(d));
+      setDiagnostics(result);
+    }
+
     const state = EditorState.create({
       doc: value,
       extensions: [
-        // closeBrackets(),
-        // bracketMatching(),
         expressionLanguageSupport({
           autocompletion: {
             typeEnvironment: typeEnv,
             scopeEnvironment: scopeEnv,
           },
+          validation: true,
         }),
-        noNewLines,
+        keymap.of([
+          {
+            key: "Enter",
+            run: () => true,
+          },
+        ]),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
             const newValue = update.state.doc.toString();
             onChange(newValue);
           }
         }),
+        EditorView.updateListener.of((update) => {
+          if (!update.docChanged) {
+            collectDiagnostics();
+          }
+        }),
+        EditorView.theme({
+          "&": {
+            border: "1px solid #ccc",
+            borderRadius: "4px",
+            padding: "4px 40px 4px 8px",
+            "&.cm-focused": {
+              outline: "none",
+            },
+          },
+          ".cm-content": {
+            whiteSpace: "nowrap",
+            overflowX: "auto",
+            fontFamily: "monospace",
+          },
+        }),
         ...extensions,
       ],
     });
 
-    const view = new EditorView({
-      state,
-      parent: ref.current,
-    });
+    const view = new EditorView({ state });
 
+    ref.current.prepend(view.dom);
     viewRef.current = view;
 
     return () => {
@@ -86,5 +130,26 @@ export function ExpressionEditor({ value, onChange, extensions = [] }: Props) {
     }
   }, [value]);
 
-  return <div ref={ref} />;
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      <div
+        style={{
+          position: "absolute",
+          top: 7,
+          right: 10,
+        }}
+      >
+        <Tooltip label="Press CTRL-Space to autocomplete" position="bottom">
+          <IconInfoCircle />
+        </Tooltip>
+      </div>
+      <ul>
+        {diagnostics.map(({ message, from, to }) => (
+          <li key={message}>
+            {message} ({from}:{to})
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 }

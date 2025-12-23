@@ -133,30 +133,7 @@ export function PromptModal({
         )}
         {prompt?.type === "text" && (
           <Box h="500px">
-            <ExpressionEditor
-              value={value!}
-              onChange={(e) => setValue(e)}
-              extensions={[
-                EditorView.theme({
-                  "&": {
-                    border: "1px solid #ccc",
-                    borderRadius: "4px",
-                    padding: "4px 8px",
-                  },
-                  ".cm-content": {
-                    whiteSpace: "nowrap",
-                    overflowX: "auto",
-                    fontFamily: "monospace",
-                  },
-                  ".cm-line": {
-                    padding: 0,
-                  },
-                  ".cm-gutters": {
-                    display: "none",
-                  },
-                }),
-              ]}
-            />
+            <ExpressionEditor value={value!} onChange={(e) => setValue(e)} />
           </Box>
         )}
         <Group gap={rem(16)} justify="end">
