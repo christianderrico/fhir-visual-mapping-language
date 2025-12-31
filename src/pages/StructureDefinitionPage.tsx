@@ -32,7 +32,10 @@ const data = Object.fromEntries(
   Object.values(
     import.meta.glob("../../src-generated/metadata/*.json", { eager: true }),
   )
-    .filter((t): t is Resource => isResource(t) && (t.kind === "resource" || t.kind == "logical"))
+    .filter(
+      (t): t is Resource =>
+        isResource(t) && (t.kind === "resource" || t.kind == "logical"),
+    )
     .map((r) => [
       r.name,
       {
@@ -49,7 +52,7 @@ export default function MappingDefinitionPage() {
 
   const [source, setSource] = useState<DefinitionState>(emptyState);
   const [target, setTarget] = useState<DefinitionState>(emptyState);
-  const navigate = useNavigate()
+  const navigate = useNavigate();
 
   const canProceed = templateName && source.definition && target.definition;
 
@@ -124,8 +127,12 @@ export default function MappingDefinitionPage() {
             size="md"
             onClick={() => {
               navigate("/editor", {
-                state: {templateName: templateName, source: source.definition, target: target.definition} as EditorProps
-              })
+                state: {
+                  templateName: templateName,
+                  source: source.definition,
+                  target: target.definition,
+                } as EditorProps,
+              });
             }}
           >
             Create

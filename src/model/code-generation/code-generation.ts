@@ -9,11 +9,19 @@ import {
   printRuleTree,
 } from "./fml-graph-building-utils";
 
-export function createGraph(
+export interface GraphProps {
+  groupName: string,
   templateName: string,
   nodes: Node[],
   edges: Edge[],
+}
+
+export function createGraph(
+  props: GraphProps
 ) {
+
+  const {groupName, templateName, nodes, edges} = props
+  
   const graph = new FMLGraph();
   const nodeMap = new Map<string, FMLNode>();
 
@@ -67,7 +75,7 @@ export function createGraph(
     "",
   ];
   lines.push(
-    `group main(source ${source.alias} : ${source.resource}, target ${target.alias} : ${target.resource}) {`,
+    `group ${groupName}(source ${source.alias} : ${source.resource}, target ${target.alias} : ${target.resource}) {`,
   );
   if (!sourceRoot || !targetRoot) {
     lines.push("}");

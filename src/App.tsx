@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import "@mantine/core/styles.css";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-
 import { MantineProvider } from "@mantine/core";
 import { Editor } from "./pages/Editor";
 import type { Resource } from "src-common/fhir-types";

@@ -8,4 +8,14 @@ export default defineConfig({
     react(),
     tsconfigPaths(),
   ],
+  //TODO: REMOVE WITH A BACKEND
+  server: {
+    proxy: {
+      "/fhir": {
+        target: "https://gitlab.com",
+        changeOrigin: true,
+        rewrite: p => p.replace(/^\/fhir/, ""),
+      },
+    },
+  },
 })

@@ -1,13 +1,13 @@
 import {
   Button,
   Card,
-  Code,
+  Divider,
   Group,
   Menu,
   Modal,
   ScrollArea,
   Tabs,
-  Text,
+  Title,
 } from "@mantine/core";
 import dagre from "@dagrejs/dagre";
 import {
@@ -19,7 +19,6 @@ import {
   useEdgesState,
   useKeyPress,
   useNodesState,
-  useOnViewportChange,
   useReactFlow,
   type Connection,
   type Edge,
@@ -59,12 +58,14 @@ import "./node.css";
 import { useTypeEnvironment } from "../hooks/useTypeEnvironment";
 import { getNonPrimitiveType as _getNonPrimitiveType } from "../model/type-environment-utils";
 import { PromptProvider, usePrompt } from "../providers/PromptProvider";
-import { url } from "src-common/strict-types.ts";
 import { Datatype, type Resource } from "src-common/fhir-types.ts";
 import { useDisclosure } from "@mantine/hooks";
 import { CodeHighlight } from "@mantine/code-highlight";
 import { asVariableName } from "src/utils/functions.ts";
-import { createGraph } from "src/model/code-generation/code-generation.ts";
+import {
+  createGraph,
+  type GraphProps,
+} from "src/model/code-generation/code-generation.ts";
 import { useLocation } from "react-router-dom";
 
 const nodeTypes = {
@@ -430,7 +431,7 @@ export const Editor: FC = () => {
       position: { x: 900, y: 0 },
       data: {
         type: state.target,
-        alias: `${asVariableName(state.source.name)}_2`,
+        alias: `${asVariableName(state.target.name)}_2`,
         expand: true,
         connections,
         onToggleNodeExpand,
@@ -443,7 +444,7 @@ export const Editor: FC = () => {
   const [viewport, setViewport] = useState<Viewport | null>({
     x: 0,
     y: 0,
-    zoom: 1,
+    zoom: 100,
   });
   const [stack, setStack] = useState<{ nodes: Node[]; edges: Edge[] }[]>([]);
   const undoRedoLimit = 10;
@@ -583,7 +584,15 @@ export const Editor: FC = () => {
     <>
       <header className={classes.header}>
         <div className={classes["header-inner"]}>
-          <Group gap={5}>
+          <Group gap={20} align="baseline">
+            <Menu>
+              <Menu.Target>
+                <Title order={3} style={{paddingTop: 1}}>
+                  {state.templateName}
+                </Title>
+              </Menu.Target>
+            </Menu>
+            <Divider orientation="vertical"/>
             <Menu>
               <Menu.Target>
                 <Button variant="subtle" c="dark" fw="normal">
@@ -622,7 +631,12 @@ export const Editor: FC = () => {
                   fw="normal"
                   onClick={() => {
                     setMyCodeString(
-                      createGraph(state.templateName, nodes, edges),
+                      createGraph({
+                        groupName: "main",
+                        templateName: state.templateName,
+                        nodes,
+                        edges,
+                      } as GraphProps),
                     );
                     open();
                   }}
@@ -631,11 +645,8 @@ export const Editor: FC = () => {
                 </Button>
               </Menu.Target>
             </Menu>
-            <Menu>
-              <Text c="dimmed" fw={500}>
-                | {state.templateName}
-              </Text>
-            </Menu>
+            <Divider orientation="vertical" />
+            {/* <EditableTabsVSCode /> */}
           </Group>
           <Modal
             opened={opened}

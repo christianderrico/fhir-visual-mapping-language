@@ -1,5 +1,6 @@
 import { Alert, Button, Group, Stack, TextInput } from "@mantine/core";
 import { useState } from "react";
+import { parseStructureDefinition } from "src-common/structure-definition-utils";
 
 interface FhirResourceSearchProps {
   resourceType: "source" | "target";
@@ -24,7 +25,7 @@ export function FhirResourceSearch({
     setError(null);
 
     try {
-      const response = await fetch(url, {
+      const response = await fetch(`fhir/${url}`, {
         headers: { Accept: "application/fhir+json" },
       });
 
@@ -38,7 +39,7 @@ export function FhirResourceSearch({
         throw new Error("La risorsa non è una StructureDefinition");
       }
 
-      onResourceSelect(data);
+      onResourceSelect(parseStructureDefinition(data));
     } catch (err) {
       setError(
         err instanceof Error
@@ -51,8 +52,8 @@ export function FhirResourceSearch({
   };
 
   return (
-    <Stack gap="md">
-      <Group>
+    <Stack justify="center" gap="md">
+      <Group align="flex-end">
         <TextInput
           label="URL StructureDefinition"
           value={url}

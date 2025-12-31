@@ -16,6 +16,7 @@ import {
   IconChevronUp,
   IconCode,
   IconDatabase,
+  IconSearch,
 } from "@tabler/icons-react";
 import { useEffect, useMemo, useState } from "react";
 import _ from "lodash";
@@ -24,7 +25,7 @@ import { StructureDefinitionViewer } from "./StructureDefinitionViewer";
 import classes from "./Tabs.module.css";
 import { parseStructureDefinition } from "src-common/structure-definition-utils";
 import { isResource, type Resource } from "src-common/fhir-types";
-import fs from "fs"
+import { FhirResourceSearch } from "./FhirResourceSearchProps";
 
 type InputMethod = "select" | "url" | "json";
 
@@ -43,7 +44,6 @@ interface StructureDefinitionInputProps {
   selectData: Record<string, Partial<DefinitionState>>;
 }
 
-//only for test
 function handleSave(data: Resource) {
   const json = JSON.stringify(data, null, 2);
   const blob = new Blob([json], { type: "application/json" });
@@ -55,19 +55,19 @@ function handleSave(data: Resource) {
   a.click();
 
   URL.revokeObjectURL(url);
-};
+}
 
 export function StructureDefinitionInput({
+  label,
   state,
   onChange,
   selectData,
 }: StructureDefinitionInputProps) {
   const [previewOpened, handlers] = useDisclosure(true);
-  const [json, setJson] = useState("")
+  const [json, setJson] = useState("");
 
   const handleJson = (newJson: string) => {
-    if(newJson != "")
-      setJson(newJson)
+    if (newJson != "") setJson(newJson);
 
     if (!newJson.trim()) {
       onChange({
@@ -134,7 +134,7 @@ export function StructureDefinitionInput({
             definition: null,
             selectValue: null,
             jsonError: null,
-            json: ""
+            json: "",
           });
         }}
       >
@@ -145,6 +145,13 @@ export function StructureDefinitionInput({
             leftSection={<IconDatabase size={16} />}
           >
             Select
+          </Tabs.Tab>
+          <Tabs.Tab
+            className={classes.tab}
+            value="search"
+            leftSection={<IconSearch size={16} />}
+          >
+            Search
           </Tabs.Tab>
           <Tabs.Tab
             className={classes.tab}
@@ -176,6 +183,13 @@ export function StructureDefinitionInput({
           />
         </Tabs.Panel>
 
+        <Tabs.Panel value="search" pt="lg">
+          <FhirResourceSearch
+            resourceType={label!}
+            onResourceSelect={(resource: Resource) => onChange({...state, definition: resource, selectValue: resource.name})}
+          ></FhirResourceSearch>
+        </Tabs.Panel>
+
         <Tabs.Panel value="json" pt="lg">
           <ReactCodeMirror
             lang="json"
@@ -201,28 +215,30 @@ export function StructureDefinitionInput({
         <Title order={3}>Preview</Title>
         <Group>
           <Button
-          size="xs"
-          variant="light"
-          onClick={handlers.toggle}
-          rightSection={
-            previewOpened ? (
-              <IconChevronUp size={14} />
-            ) : (
-              <IconChevronDown size={14} />
-            )
-          }
-        >
-          {previewOpened ? "Hide" : "Show"}
-        </Button>
-        {state.inputType == "json" && 
-        <Button size="xs"
-          variant="light"
-          onClick={() => {
-            handleSave(state.definition)
-            //fs.writeFileSync("../../src-generated/metadata/*.json", JSON.stringify(state.definition, null, 2));
-          }}>
-          Save
-          </Button>}
+            size="xs"
+            variant="light"
+            onClick={handlers.toggle}
+            rightSection={
+              previewOpened ? (
+                <IconChevronUp size={14} />
+              ) : (
+                <IconChevronDown size={14} />
+              )
+            }
+          >
+            {previewOpened ? "Hide" : "Show"}
+          </Button>
+          {state.inputType == "json" && (
+            <Button
+              size="xs"
+              variant="light"
+              onClick={() => {
+                handleSave(state.definition);
+              }}
+            >
+              Save
+            </Button>
+          )}
         </Group>
       </Group>
 
