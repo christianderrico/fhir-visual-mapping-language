@@ -8,7 +8,6 @@ interface FhirResourceSearchProps {
 }
 
 export function FhirResourceSearch({
-  resourceType,
   onResourceSelect,
 }: FhirResourceSearchProps) {
   const [url, setUrl] = useState("");

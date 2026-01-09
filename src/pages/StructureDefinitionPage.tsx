@@ -18,7 +18,7 @@ import classes from "./Tabs.module.css";
 import { isResource, type Resource } from "src-common/fhir-types";
 import _ from "lodash";
 import { useNavigate } from "react-router-dom";
-import type { EditorProps } from "@monaco-editor/react";
+import { useFlow } from "src/providers/FlowProvider";
 
 const emptyState: DefinitionState = {
   definition: null,
@@ -52,6 +52,7 @@ export default function MappingDefinitionPage() {
 
   const [source, setSource] = useState<DefinitionState>(emptyState);
   const [target, setTarget] = useState<DefinitionState>(emptyState);
+  const ctx = useFlow()
   const navigate = useNavigate();
 
   const canProceed = templateName && source.definition && target.definition;
@@ -126,13 +127,8 @@ export default function MappingDefinitionPage() {
             disabled={!canProceed}
             size="md"
             onClick={() => {
-              navigate("/editor", {
-                state: {
-                  templateName: templateName,
-                  source: source.definition,
-                  target: target.definition,
-                } as EditorProps,
-              });
+              ctx.startEditor(source.definition, target.definition, templateName)
+              navigate("/editor")
             }}
           >
             Create

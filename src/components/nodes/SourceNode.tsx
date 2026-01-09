@@ -7,6 +7,7 @@ import type { Field, Resource } from "src-common/fhir-types";
 import { useTypeEnvironment } from "../../hooks/useTypeEnvironment";
 import { getNonPrimitiveType } from "../../model/type-environment-utils";
 import { asVariableName, extractNumberFromString } from "src/utils/functions";
+import { useFlow } from "src/providers/FlowProvider";
 
 const Fields: FC<{
   fields: Record<string, Field>;
@@ -44,8 +45,9 @@ type SourceNodeProps = NodeProps<
 
 export const SourceNode: FC<SourceNodeProps> = (props) => {
   const typeEnvironment = useTypeEnvironment();
-  const { type: typeDef, connections, expand, onToggleNodeExpand } = props.data;
+  const { type: typeDef, expand } = props.data;
   const getNonPrimitive = getNonPrimitiveType(typeEnvironment);
+  const ctx = useFlow()
 
   const fs: Array<[string, Field]> = Object.entries(
     "fields" in typeDef
@@ -59,7 +61,7 @@ export const SourceNode: FC<SourceNodeProps> = (props) => {
     Object.fromEntries(
       expand
         ? fs
-        : fs.filter(([k, _]) => connections.get(props.id)?.includes(k)),
+        : fs.filter(([k, _]) => ctx.connections.get(props.id)?.includes(k)),
     );
 
   const fields = useMemo(() => {
@@ -101,7 +103,7 @@ export const SourceNode: FC<SourceNodeProps> = (props) => {
             </Text>
           </Text>
           <Button
-            onClick={() => onToggleNodeExpand(!expand, props.id)}
+            onClick={() => ctx.setNodeExpanded(!expand, props.id)}
             variant="subtle"
             c="dark"
             fw="normal"

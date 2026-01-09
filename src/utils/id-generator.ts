@@ -21,7 +21,7 @@ export class NumberIdGenerator implements IdGenerator {
   private counter: number;
 
   constructor(
-    startFrom: number = 3,
+    startFrom: number = 0,
   ) {
     this.counter = startFrom;
   }

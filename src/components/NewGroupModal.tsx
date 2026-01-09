@@ -11,63 +11,70 @@ import {
   Title,
 } from "@mantine/core";
 import { Text } from "@mantine/core";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import type { Disclosure } from "./EditorTabs.tsx";
+import { useTypeEnvironment } from "src/hooks/useTypeEnvironment.ts";
+import { useFlow } from "src/providers/FlowProvider.tsx";
+import _ from "lodash";
 
 interface MyModalProps {
-    disclosure: Disclosure,
-    onAddingTab: (name: string) => void
+  disclosure: Disclosure;
+  onAddingTab: (name: string) => void;
 }
 
-export default function MyModal({disclosure, onAddingTab}: MyModalProps) {
+export default function NewGroupModal({ disclosure, onAddingTab }: MyModalProps) {
+  const { opened, closeModal } = disclosure;
+  const ctx = useFlow();
 
-  const {opened, closeModal} = disclosure
+  const [name, setName] = useState("");
+  const [sources, setSources] = useState<string[]>([]);
+  const [targets, setTargets] = useState<string[]>([]);
+  const [produced, setProduced] = useState<string[]>([]);
 
-  const [name, setName] = useState("")
-  const [sources, setSources] = useState<string[]>([])
-  const [targets, setTargets] = useState<string[]>([])
-  const [produced, setProduced] = useState<string[]>([])
+  const environment = useTypeEnvironment();
 
   const resetProperties = () => {
-    setName("")
-    setSources([])
-    setTargets([])
-    setProduced([])
+    setName("");
+    setSources([]);
+    setTargets([]);
+    setProduced([]);
+  };
+
+  function _getResourcesFromOptions(options: string[]) {
+    return options.map((opt) => options2Res[opt]);
   }
 
-  // Sample data options (you can replace these with your real data)
-  const sourceOptions = [
-    { value: "database-postgres", label: "PostgreSQL Database" },
-    { value: "database-mysql", label: "MySQL Database" },
-    { value: "api-rest", label: "REST API" },
-    { value: "file-csv", label: "CSV File" },
-    { value: "file-json", label: "JSON File" },
-    { value: "warehouse-snowflake", label: "Snowflake Warehouse" },
-    { value: "warehouse-bigquery", label: "BigQuery" },
-  ];
+  function getSources() {
+    return _getResourcesFromOptions(sources);
+  }
 
-  const targetOptions = [
-    { value: "dashboard-metabase", label: "Metabase Dashboard" },
-    { value: "database-redshift", label: "Amazon Redshift" },
-    { value: "file-parquet", label: "Parquet File" },
-    { value: "api-webhook", label: "Webhook" },
-    { value: "storage-s3", label: "S3 Bucket" },
-  ];
+  function getTargets() {
+    return _getResourcesFromOptions(targets);
+  }
 
-  const producedOptions = [
-    { value: "table-sales", label: "Sales Table" },
-    { value: "table-users", label: "Users Table" },
-    { value: "report-monthly", label: "Monthly Report" },
-    { value: "dataset-cleaned", label: "Cleaned Dataset" },
-    { value: "model-predictions", label: "ML Predictions" },
-  ];
+  function getProduced() {
+    return _getResourcesFromOptions(produced);
+  }
+
+  const debounceSetter = useCallback(
+    _.debounce(setName, 500)
+  , [])
+
+  const options2Res = Object.fromEntries(
+    environment.getResources().map((res) => [res.name, res]),
+  );
+
+  const options = Object.keys(options2Res).map((o) => ({
+    value: o,
+    label: o,
+  }));
 
   return (
     <Modal
       opened={opened}
       onClose={() => {
         closeModal();
-        resetProperties()
+        resetProperties();
       }}
       title={<Title order={3}>New group</Title>}
       size="lg"
@@ -75,12 +82,11 @@ export default function MyModal({disclosure, onAddingTab}: MyModalProps) {
       padding="xl"
     >
       <Group align="flex-start" grow>
-        {/* Left side: Form */}
         <Stack gap="md" style={{ flex: 1 }}>
           <TextInput
             label="Name"
             placeholder="Enter group name"
-            onChange={(e) => setName(e.currentTarget.value)}
+            onChange={(e) => debounceSetter(e.currentTarget.value)}
             required
             withAsterisk
           />
@@ -88,7 +94,7 @@ export default function MyModal({disclosure, onAddingTab}: MyModalProps) {
           <MultiSelect
             label="Sources"
             placeholder="Select one or more sources"
-            data={sourceOptions}
+            data={options}
             value={sources}
             onChange={setSources}
             searchable
@@ -100,7 +106,7 @@ export default function MyModal({disclosure, onAddingTab}: MyModalProps) {
           <MultiSelect
             label="Target"
             placeholder="Select target"
-            data={targetOptions}
+            data={options}
             value={targets}
             onChange={setTargets}
             searchable
@@ -112,7 +118,7 @@ export default function MyModal({disclosure, onAddingTab}: MyModalProps) {
           <MultiSelect
             label="Produced"
             placeholder="Select produced assets"
-            data={producedOptions}
+            data={options}
             value={produced}
             onChange={setProduced}
             searchable
@@ -125,8 +131,10 @@ export default function MyModal({disclosure, onAddingTab}: MyModalProps) {
             size="md"
             disabled={!name || sources.length === 0 || targets.length === 0}
             onClick={() => {
-              onAddingTab(name)
-              resetProperties()
+              onAddingTab(name);
+              ctx.addNodes(name, getSources(), "sourceNode");
+              ctx.addNodes(name, getTargets(), "targetNode");
+              resetProperties();
             }}
           >
             Create
@@ -158,7 +166,7 @@ export default function MyModal({disclosure, onAddingTab}: MyModalProps) {
                       Sources ({sources.length})
                     </Text>
                     {sources.map((src) => {
-                      const option = sourceOptions.find((o) => o.value === src);
+                      const option = options.find((o) => o.value === src);
                       return (
                         <Text key={src} fw={500}>
                           • {option?.label}
@@ -175,7 +183,7 @@ export default function MyModal({disclosure, onAddingTab}: MyModalProps) {
                       Target ({targets.length})
                     </Text>
                     {targets.map((src) => {
-                      const option = targetOptions.find((o) => o.value === src);
+                      const option = options.find((o) => o.value === src);
                       return (
                         <Text key={src} fw={500}>
                           • {option?.label}
@@ -191,9 +199,7 @@ export default function MyModal({disclosure, onAddingTab}: MyModalProps) {
                       Produced ({produced.length})
                     </Text>
                     {produced.map((prod) => {
-                      const option = producedOptions.find(
-                        (o) => o.value === prod
-                      );
+                      const option = options.find((o) => o.value === prod);
                       return (
                         <Text key={prod} fw={500}>
                           • {option?.label}
