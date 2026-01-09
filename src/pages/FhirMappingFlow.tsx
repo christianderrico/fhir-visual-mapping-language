@@ -14,7 +14,7 @@ import {
   type OnNodesChange,
   type XYPosition,
 } from "@xyflow/react";
-import { type FC, useCallback } from "react";
+import { type FC, useCallback, useEffect, useState } from "react";
 import { Datatype } from "src-common/fhir-types";
 import { useTypeEnvironment } from "src/hooks/useTypeEnvironment";
 import type {
@@ -47,6 +47,8 @@ export const FhirMappingFlow: FC<{
   onInit: OnInit;
 }> = ({ nodes, onNodesChange, edges, onEdgesChange, onInit }) => {
   const ctx = useFlow();
+  //const [activeTab, setActiveTab] = useState(ctx.activeTab);
+
   const typeEnv = useTypeEnvironment();
   const getNonPrimitive = useCallback(_getNonPrimitiveType(typeEnv), [
     _getNonPrimitiveType,
@@ -103,7 +105,7 @@ export const FhirMappingFlow: FC<{
       ctx.addNode({ ...node, id });
       ctx.addEdge({ ...edgeProperties });
     },
-    [],
+    [ctx, ctx.activeTab],
   );
 
   const onNodeConnect = useCallback(
@@ -138,6 +140,7 @@ export const FhirMappingFlow: FC<{
             if (choice) {
               const choiceType = getNonPrimitive(choice);
               const id = ctx.idGen.current.getId();
+              console.log("AGGIUNGI NODO");
               return createNewNode({
                 node: {
                   type: "targetNode",
@@ -195,7 +198,7 @@ export const FhirMappingFlow: FC<{
         }
       }
     },
-    [],
+    [ctx, ctx.activeTab],
   );
 
   const onConnectEnd: OnConnectEnd = useCallback(
@@ -203,7 +206,7 @@ export const FhirMappingFlow: FC<{
       const { clientX, clientY } =
         "changedTouches" in event ? event.changedTouches[0] : event;
       const xyPos = screenToFlowPosition({ x: clientX, y: clientY });
-      const { isValid, fromNode, fromHandle, toNode } = connectionState;
+      const { isValid, fromNode, fromHandle } = connectionState;
 
       if (!isValid) {
         if (fromNode === null || fromHandle === null) return;
@@ -228,11 +231,13 @@ export const FhirMappingFlow: FC<{
         ) {
           const opts = typeEnv.getOptions(field.valueSet.url);
           const opt = await askOption(Object.values(opts));
+          console.log("AGGIUNGI NODO");
           return createNewNode({
             node: {
               type: "transformNode",
               position: xyPos,
               data: {
+                groupName: ctx.activeTab,
                 transformName: "const",
                 args: [{ datatype: Datatype.STRING, value: opt }],
               },
@@ -247,11 +252,16 @@ export const FhirMappingFlow: FC<{
 
         if (fromNode.type === "targetNode" && field.kind === "primitive") {
           const arg = await askText("Insert value for this field");
+          console.log("AGGIUNGI NODO");
           return createNewNode({
             node: {
               type: "transformNode",
               position: xyPos,
-              data: { transformName: "const", args: [arg] },
+              data: {
+                transformName: "const",
+                args: [arg],
+                groupName: ctx.activeTab,
+              },
               origin: [0.5, 0.0] as [number, number],
             },
             attachTo: {
@@ -272,7 +282,7 @@ export const FhirMappingFlow: FC<{
         );
       }
     },
-    [screenToFlowPosition],
+    [ctx, ctx.activeTab, screenToFlowPosition],
   );
 
   const onDrop = useCallback(
@@ -297,7 +307,7 @@ export const FhirMappingFlow: FC<{
       };
       onNodesChange([{ type: "add", item: newGroupNode }]);
     },
-    [screenToFlowPosition, onNodesChange],
+    [ctx, ctx.activeTab, screenToFlowPosition, onNodesChange],
   );
 
   return (
