@@ -99,8 +99,7 @@ export const GroupNode: FC<GroupNodeProps> = (props) => {
                   </>
                 )}
               </Grid.Col>
-
-              {/* Target cell with right handle */}
+              
               <Grid.Col
                 span={6}
                 style={{

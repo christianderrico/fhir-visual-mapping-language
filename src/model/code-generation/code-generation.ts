@@ -63,9 +63,9 @@ export function createGraph(
   const sourceRoot = graph.getSourceRoot();
   const targetRoot = graph.getTargetRoot();
   const source = (sourceRoot ??
-    getOrCreateNode(findNode(nodes, "0"))) as FMLNode;
+    getOrCreateNode(findNode(nodes, "2"))) as FMLNode;
   const target = (targetRoot ??
-    getOrCreateNode(findNode(nodes, "1"))) as FMLNode;
+    getOrCreateNode(findNode(nodes, "3"))) as FMLNode;
 
   const lines = [
     `map "http://hl7.org/fhir/StructureMap/${templateName}" = "${templateName}"`,
