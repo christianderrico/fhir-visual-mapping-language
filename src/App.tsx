@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import "@mantine/core/styles.css";
-
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { MantineProvider } from "@mantine/core";
 import { Editor } from "./pages/Editor";
 import type { Resource } from "src-common/fhir-types";
@@ -10,9 +10,12 @@ import {
   type TypeEnvironment,
 } from "./model/type-environment";
 import MotuPatient from "./MotuPatient.json";
-import type { ValueSet, ValueSetEntry } from "src-common/valueset-types";
+import type { ValueSet } from "src-common/valueset-types";
 import type { URL } from "src-common/strict-types";
 import { parseStructureDefinition } from "src-common/structure-definition-utils";
+import StructureDefinitionPage from "./pages/StructureDefinitionPage";
+import { FlowProvider } from "./providers/FlowProvider";
+import { ReactFlowProvider } from "@xyflow/react";
 
 const modules = import.meta.glob("../src-generated/metadata/*.json", {
   eager: true,
@@ -42,9 +45,18 @@ function App() {
   return (
     <MantineProvider>
       {typeEnv && (
-        <TypeEnvironmentContext.Provider value={typeEnv}>
-          <Editor />
-        </TypeEnvironmentContext.Provider>
+        <BrowserRouter>
+          <TypeEnvironmentContext.Provider value={typeEnv}>
+            <ReactFlowProvider>
+              <FlowProvider>
+                <Routes>
+                  <Route path="/" element={<StructureDefinitionPage />} />
+                  <Route path="/editor" element={<Editor />} />
+                </Routes>
+              </FlowProvider>
+            </ReactFlowProvider>
+          </TypeEnvironmentContext.Provider>
+        </BrowserRouter>
       )}
     </MantineProvider>
   );

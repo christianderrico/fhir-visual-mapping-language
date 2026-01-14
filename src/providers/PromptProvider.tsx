@@ -1,7 +1,6 @@
 import { createContext, useState, useContext } from "react";
 import { PromptModal, type PromptType } from "../components/PromptModal";
 import type { ValueSetEntry } from "src-common/valueset-types";
-import type { Datatype } from "src-common/fhir-types";
 import type { URL } from "src-common/strict-types";
 
 const PromptContext = createContext<ReturnType<typeof useProvidePrompt> | null>(

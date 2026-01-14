@@ -19,11 +19,13 @@ export interface TypeEnvironment {
   getImplementations(url: URLOrDefinedType): Resource[];
   getValueSet(url: URL): ValueSet | undefined;
   getOptions(url: URL): ValueSetEntry[];
+  getResources(): Resource[]
 }
 
 export class SimpleTypeEnvironment implements TypeEnvironment {
   private resourceTypeTree: TypeTree;
   private elementTypeTree: TypeTree;
+  private resources: Resource[]
 
   constructor(
     private typeMap: TypeMap,
@@ -35,6 +37,8 @@ export class SimpleTypeEnvironment implements TypeEnvironment {
       ([_, t]) => t.kind === "resource",
     );
 
+    this.resources = entries.map(([_, resource]) => resource)
+
     this.resourceTypeTree = new SimpleTypeTree(
       Object.fromEntries(resourceEntries),
     );
@@ -42,6 +46,11 @@ export class SimpleTypeEnvironment implements TypeEnvironment {
       Object.fromEntries(elementEntries),
     );
   }
+
+  getResources(): Resource[] {
+    return this.resources
+  }
+
   getOptions(url: URL): ValueSetEntry[] {
     return this.getValueSet(url)?.include ?? [];
   }

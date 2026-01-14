@@ -36,6 +36,11 @@
   --node-accent-bg: var(--mantine-color-blue-1);
 }
 
+.black {
+  --node-accent-color: var(--mantine-color-dark);
+  --node-accent-bg: var(--mantine-color-dark);
+}
+
 .pink {
   --node-accent-color: var(--mantine-color-pink-5);
   --node-accent-bg: var(--mantine-color-pink-1);
