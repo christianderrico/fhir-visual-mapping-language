@@ -177,7 +177,8 @@ function useProvideFlow() {
   }
 
   function addEdge(edge: Edge) {
-    setEdges((prev) => prev.concat({ ...edge }));
+    const nEdge = edge.id ? edge : { ...edge, id: idGen.current.getId() }
+    setEdges((prev) => prev.concat({ ...nEdge }));
   }
 
   function commitSnapshot() {
@@ -306,14 +307,15 @@ function useProvideFlow() {
       (prev) => new Set([...prev].map((p) => (p === prevName ? nextName : p))),
     );
     setNodes((nodes) =>
-      nodes.map((n) => (
-        { ...n,
-          id: n.type === 'groupNode' && n.id === prevName ? nextName : n.id,
-          data: { 
-            ...n.data, 
-            groupName: n.data.groupName === prevName ? nextName : n.data.groupName
-          } 
-        })),
+      nodes.map((n) => ({
+        ...n,
+        id: n.type === "groupNode" && n.id === prevName ? nextName : n.id,
+        data: {
+          ...n.data,
+          groupName:
+            n.data.groupName === prevName ? nextName : n.data.groupName,
+        },
+      })),
     );
   }
 
