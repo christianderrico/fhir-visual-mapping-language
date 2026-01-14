@@ -69,18 +69,24 @@ export function parseValuesetMap(codes: Record<URL, any>): ValueSet[] {
     });
 }
 
+function parseElement(element: any) {
+  const mappings = element.flatMap((e: { code: any; target: any[] }) =>
+    e.target
+      .filter((t) => ["equal", "equivalent"].includes(t.equivalence))
+      .map((t) => ({
+        s: e.code,
+        t: t.code,
+      })),
+  );
+
+  return mappings.length > 0 ? mappings : undefined;
+}
+
 function parseGroup(group: any) {
   return group.map((g: { element: any; source: any; target: any }) => ({
     source: g.source,
     target: g.target,
-    mappings: g.element.flatMap((e: { code: any; target: any[] }) =>
-      e.target
-        .filter((t) => ["equal", "equivalent"].includes(t.equivalence))
-        .map((t) => ({
-          s: e.code,
-          t: t.code,
-        })),
-    ),
+    mappings: parseElement(g.element),
   }));
 }
 

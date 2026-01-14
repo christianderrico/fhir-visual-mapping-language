@@ -18,31 +18,44 @@ import classes from "./Tabs.module.css";
 import { isUrl } from "src-common/strict-types";
 
 export function ConceptMapViewer() {
-  const checkRows = (): boolean => {
-    return rows.filter((r) => r[0] != "" && r[1] != "").length <= 0;
+  const checkDisabilityRows = (): boolean => {
+    const rs = rows.filter(([source, target]) => source != "" && target != "");
+    return rs.length !== rows.length || rs.length <= 0;
   };
 
   const [rows, setRows] = useState<[string, string][]>([]);
   const [uri, setUri] = useState("");
   const [source, setSource] = useState("");
   const [target, setTarget] = useState("");
+  const [activeTab, setActive] = useState<"internal" | "external">("internal");
 
   const addRow = () => setRows((prev) => [...prev, ["", ""]]);
   const removeRow = () => setRows((prev) => prev.slice(0, -1));
 
-  console.log(uri);
-  console.log(source);
-  console.log(target);
+  const resetState = () => {
+    setUri('')
+    setSource('')
+    setTarget('')
+    //setRows([])
+  }
 
   return (
     <Container size="xl" py="xl">
       <Stack gap="xl">
         <Tabs defaultValue="internal">
           <Tabs.List>
-            <Tabs.Tab className={classes.tab} value="internal">
+            <Tabs.Tab
+              className={classes.tab}
+              value="internal"
+              onClick={(_) => (setActive("internal"), resetState())}
+            >
               Internal
             </Tabs.Tab>
-            <Tabs.Tab className={classes.tab} value="external">
+            <Tabs.Tab
+              className={classes.tab}
+              value="external"
+              onClick={(_) => (setActive("external"), resetState())}
+            >
               External
             </Tabs.Tab>
           </Tabs.List>
@@ -51,6 +64,7 @@ export function ConceptMapViewer() {
             <Paper p="lg" radius="md" withBorder>
               <Stack gap="xl">
                 <TextInput
+                  value={uri}
                   label="URI"
                   withAsterisk
                   onChange={(e) => setUri(e.target.value)}
@@ -58,11 +72,13 @@ export function ConceptMapViewer() {
 
                 <SimpleGrid cols={{ base: 1, sm: 2 }}>
                   <TextInput
+                    value={source}
                     label="Source"
                     withAsterisk
                     onChange={(e) => setSource(e.target.value)}
                   />
                   <TextInput
+                    value={target}
                     label="Target"
                     withAsterisk
                     onChange={(e) => setTarget(e.target.value)}
@@ -154,7 +170,7 @@ export function ConceptMapViewer() {
 
           <Tabs.Panel value="external" pt="lg">
             <Paper p="lg" radius="md" withBorder>
-              <TextInput label="URI" withAsterisk />
+              <TextInput value={uri} label="URI" withAsterisk onChange={(e) => setUri(e.target.value)}/>
             </Paper>
           </Tabs.Panel>
         </Tabs>
@@ -163,10 +179,27 @@ export function ConceptMapViewer() {
           <Button
             size="md"
             disabled={
-              checkRows() || !isUrl(uri) || source === "" || target === ""
+              (activeTab === "internal" &&
+                (checkDisabilityRows() ||
+                  !isUrl(uri) ||
+                  source === "" ||
+                  target === "")) ||
+              (activeTab === "external" && !isUrl(uri))
             }
             onClick={() => {
-              console.log("Create Concept Map");
+              console.log({
+                url: uri,
+                group: [
+                  {
+                    source,
+                    target,
+                    mappings: rows.map((r) => ({
+                      s: r[0],
+                      t: r[1],
+                    })),
+                  },
+                ],
+              });
             }}
           >
             Create
