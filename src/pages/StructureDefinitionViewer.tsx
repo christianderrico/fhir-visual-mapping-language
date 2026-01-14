@@ -20,7 +20,7 @@ import {
   IconChevronUp,
   IconPointFilled,
 } from "@tabler/icons-react";
-import { first, isString, last } from "lodash";
+import { first, isString } from "lodash";
 import { useMemo } from "react";
 import type { URL } from "src-common/strict-types";
 import { basename, isUrl } from "src-common/strict-types";
@@ -48,7 +48,7 @@ function MyLeaf({
   tree,
   level,
 }: RenderTreeNodePayload & { tree: ReturnType<typeof useTree> }) {
-  const [range, value] = node.label.toString().split(" ", 2);
+  const [range, value] = node.label.toString().split("_", 2);
 
   return (
     <Group
@@ -98,11 +98,10 @@ function getValue(value: NestedValue | undefined): string {
     if (value.length === 1) {
       return getValue(first(value));
     }
+    
+    console.log(value[0])
 
-    const firstValue = getValue(first(value));
-    const lastValue = getValue(last(value));
-
-    return `${firstValue} ... ${lastValue}`;
+    return `{ ${value.map((v) => (isString(v) && isUrl(v) ? basename(v) : `${v.kind}: ${getValue(v.value)}`)).join(" | ")} }`;
   }
 
   if (isUrl(value)) {
@@ -125,7 +124,7 @@ function buildTreeData(
     return {
       value,
       label:
-        `${field.min}..${field.max} ${field.value ? getValue(field.value) : ""}`.trim(),
+        `${field.min}..${field.max}_${field.value ? getValue(field.value) : ""}`.trim(),
       children: field.fields
         ? buildTreeData(field.fields, currentPath)
         : undefined,
