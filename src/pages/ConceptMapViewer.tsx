@@ -33,11 +33,11 @@ export function ConceptMapViewer() {
   const removeRow = () => setRows((prev) => prev.slice(0, -1));
 
   const resetState = () => {
-    setUri('')
-    setSource('')
-    setTarget('')
+    setUri("");
+    setSource("");
+    setTarget("");
     //setRows([])
-  }
+  };
 
   return (
     <Container size="xl" py="xl">
@@ -170,7 +170,12 @@ export function ConceptMapViewer() {
 
           <Tabs.Panel value="external" pt="lg">
             <Paper p="lg" radius="md" withBorder>
-              <TextInput value={uri} label="URI" withAsterisk onChange={(e) => setUri(e.target.value)}/>
+              <TextInput
+                value={uri}
+                label="URI"
+                withAsterisk
+                onChange={(e) => setUri(e.target.value)}
+              />
             </Paper>
           </Tabs.Panel>
         </Tabs>

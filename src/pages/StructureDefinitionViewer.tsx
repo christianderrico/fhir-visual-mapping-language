@@ -98,10 +98,8 @@ function getValue(value: NestedValue | undefined): string {
     if (value.length === 1) {
       return getValue(first(value));
     }
-    
-    console.log(value[0])
 
-    return `{ ${value.map((v) => (isString(v) && isUrl(v) ? basename(v) : `${v.kind}: ${getValue(v.value)}`)).join(" | ")} }`;
+    return `{ ${value.map((v) => (isString(v) && isUrl(v) ? basename(v) : `${v.kind === "reference" ? v.kind + ":" : ""} ${getValue(v.value)}`)).join(" | ")} }`;
   }
 
   if (isUrl(value)) {

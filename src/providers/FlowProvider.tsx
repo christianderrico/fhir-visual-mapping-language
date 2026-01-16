@@ -177,7 +177,7 @@ function useProvideFlow() {
   }
 
   function addEdge(edge: Edge) {
-    const nEdge = edge.id ? edge : { ...edge, id: idGen.current.getId() }
+    const nEdge = edge.id ? edge : { ...edge, id: idGen.current.getId() };
     setEdges((prev) => prev.concat({ ...nEdge }));
   }
 
@@ -297,8 +297,25 @@ function useProvideFlow() {
 
   function addTab(name: string) {
     commitSnapshot();
-    setTabs((prev) => new Set([...prev, name]));
-    setActiveTab(name);
+    if (!tabs.has(name)) {
+      setTabs((prev) => new Set([...prev, name]));
+      setActiveTab(name);
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  function updateTab(prev: string, next: string, sources: Resource[], targets: Resource[]) {
+    setTabs((prevTabs) => {
+      const nextTabs = new Set(prevTabs);
+      nextTabs.delete(prev);
+      nextTabs.add(next);
+      setNodes((prevNodes) => prevNodes.filter(n => n.data.groupName != prev))
+      addNodes(next, sources, 'sourceNode')
+      addNodes(next, targets, 'targetNode')
+      return nextTabs;
+    });
   }
 
   function renameTab(prevName: string, nextName: string) {
@@ -348,6 +365,7 @@ function useProvideFlow() {
     addTab,
     removeTab,
     renameTab,
+    updateTab,
     addNode,
     addEdge,
     addNodes,

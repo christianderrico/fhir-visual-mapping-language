@@ -14,7 +14,7 @@ import {
   type OnNodesChange,
   type XYPosition,
 } from "@xyflow/react";
-import { type FC, useCallback, useEffect, useState } from "react";
+import { type FC, useCallback } from "react";
 import { Datatype } from "src-common/fhir-types";
 import { useTypeEnvironment } from "src/hooks/useTypeEnvironment";
 import type {
@@ -47,7 +47,6 @@ export const FhirMappingFlow: FC<{
   onInit: OnInit;
 }> = ({ nodes, onNodesChange, edges, onEdgesChange, onInit }) => {
   const ctx = useFlow();
-  //const [activeTab, setActiveTab] = useState(ctx.activeTab);
 
   const typeEnv = useTypeEnvironment();
   const getNonPrimitive = useCallback(_getNonPrimitiveType(typeEnv), [
@@ -231,7 +230,7 @@ export const FhirMappingFlow: FC<{
         ) {
           const opts = typeEnv.getOptions(field.valueSet.url);
           const opt = await askOption(Object.values(opts));
-          console.log("AGGIUNGI NODO");
+
           return createNewNode({
             node: {
               type: "transformNode",
@@ -252,7 +251,7 @@ export const FhirMappingFlow: FC<{
 
         if (fromNode.type === "targetNode" && field.kind === "primitive") {
           const arg = await askText("Insert value for this field");
-          console.log("AGGIUNGI NODO");
+          
           return createNewNode({
             node: {
               type: "transformNode",
