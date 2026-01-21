@@ -1,6 +1,11 @@
 import type { Field } from "src-common/fhir-types";
-import type { NodeType, Parameter, TransformParameter, ValueParameter } from "./fml-types";
-import { FMLRule, type FMLBaseEntity, type FMLNode } from "./fml-entities";
+import type {
+  NodeType,
+  Parameter,
+  TransformParameter,
+  ValueParameter,
+} from "./fml-types";
+import { FMLGroupNode, FMLRule, type FMLBaseEntity, type FMLNode } from "./fml-entities";
 import type { Node } from "@xyflow/react";
 
 export function toFMLNodeType(type: string): NodeType {
@@ -9,17 +14,21 @@ export function toFMLNodeType(type: string): NodeType {
       return "sourceNode";
     case "targetNode":
       return "targetNode";
+    case "groupNode":
+      return "groupNode";
     default:
-      return "both";
+      return "sourceTargetNode";
   }
 }
 
 export function getType(sourceType: NodeType, targetType: NodeType): NodeType {
+  if(sourceType === "groupNode" || targetType === "groupNode")
+    return 'groupNode'
   if (sourceType === targetType) return sourceType;
-  return "both";
+  return "sourceTargetNode";
 }
 
-function fieldExtractType(field: Field):string {
+function fieldExtractType(field: Field): string {
   switch (field.kind) {
     case "backbone-element":
       return "BackboneElement";
@@ -37,7 +46,9 @@ export function transformParamFromNode(
   return {
     type: "transform",
     id: node.id,
-    resource: fieldExtractType(node.data.type as Field),
+    resource: node.data.type
+      ? fieldExtractType(node.data.type as Field)
+      : field?.replace("source-", "").replace("target-", ""),
     alias: node.data.alias,
     field,
   };
@@ -45,6 +56,10 @@ export function transformParamFromNode(
 
 export function isRule(node: FMLBaseEntity): node is FMLRule {
   return "action" in node;
+}
+
+export function isGroupNode(node: FMLBaseEntity): node is FMLGroupNode {
+  return node.type === "groupNode"
 }
 
 export function isNode(node: FMLBaseEntity): node is FMLNode {

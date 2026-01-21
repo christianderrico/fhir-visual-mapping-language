@@ -10,7 +10,7 @@ import classes from "./Editor.module.css";
 import "./node.css";
 import { useDisclosure, useHotkeys } from "@mantine/hooks";
 import {
-  createGraph,
+  generateTemplate,
   type GraphProps,
 } from "src/model/code-generation/code-generation.ts";
 import PreviewModal from "src/components/PreviewModal";
@@ -151,9 +151,9 @@ export const Editor: FC = () => {
                   style={{ minWidth: "6%" }}
                   onClick={() => {
                     setMyCodeString(
-                      createGraph({
-                        groupName: "main",
+                      generateTemplate({
                         templateName: ctx.templateName,
+                        groupNodesByTab: ctx.getGroupNodes(),
                         nodes: ctx.nodes,
                         edges: ctx.edges,
                       } as GraphProps),

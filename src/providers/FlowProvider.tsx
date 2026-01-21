@@ -306,14 +306,21 @@ function useProvideFlow() {
     }
   }
 
-  function updateTab(prev: string, next: string, sources: Resource[], targets: Resource[]) {
+  function updateTab(
+    prev: string,
+    next: string,
+    sources: Resource[],
+    targets: Resource[],
+  ) {
     setTabs((prevTabs) => {
       const nextTabs = new Set(prevTabs);
       nextTabs.delete(prev);
       nextTabs.add(next);
-      setNodes((prevNodes) => prevNodes.filter(n => n.data.groupName != prev))
-      addNodes(next, sources, 'sourceNode')
-      addNodes(next, targets, 'targetNode')
+      setNodes((prevNodes) =>
+        prevNodes.filter((n) => n.data.groupName != prev),
+      );
+      addNodes(next, sources, "sourceNode");
+      addNodes(next, targets, "targetNode");
       return nextTabs;
     });
   }
@@ -334,6 +341,20 @@ function useProvideFlow() {
         },
       })),
     );
+  }
+
+  function getGroupNodes() {
+    const groups = [...tabs];
+
+    const result = groups.reduce(
+      (groupedTabs, tab) => {
+        if (groupedTabs[tab] == null) groupedTabs[tab] = [];
+        groupedTabs[tab].push(...nodes.filter(n => (n.type === 'groupNode' && n.data.groupName === tab)));
+        return groupedTabs;
+      },
+      {} as Record<string, Node[]>,
+    );
+    return result
   }
 
   function removeTab(name: string) {
@@ -369,6 +390,7 @@ function useProvideFlow() {
     addNode,
     addEdge,
     addNodes,
+    getGroupNodes,
     setActiveTab,
     changeNodesByTab,
     changeEdgesByTab,

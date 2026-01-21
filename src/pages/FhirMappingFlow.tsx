@@ -275,6 +275,7 @@ export const FhirMappingFlow: FC<{
           onNodeConnect(xyPos, connectionState, { type: "source" });
         }
       } else {
+        console.log(fromNode)
         const arg = await askText(
           "Copy value",
           fromNode?.data.alias + (fromHandle?.id ? "." + fromHandle?.id : ""),
@@ -295,10 +296,11 @@ export const FhirMappingFlow: FC<{
         y: event.clientY,
       });
       const newGroupNode: Node = {
-        id: group.id,
+        id: `${group.id}${group.groupName}`,
         type: "groupNode",
         position,
         data: {
+          alias: group.groupName,
           groupName: group.groupName,
           sources: group.sources,
           targets: group.targets,

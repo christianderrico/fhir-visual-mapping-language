@@ -58,9 +58,6 @@ export default function EditorTabs() {
     setEditingTabId(null);
   };
 
-  console.clear()
-  console.log(ctx.tabs)
-
   return (
     <Box
       sx={{

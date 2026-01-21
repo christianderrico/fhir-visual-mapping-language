@@ -32,7 +32,7 @@ export default function NewGroupModal({
   const getResourcesName = (nType: string): string[] => {
     return ctx
       .getActiveNodesAndEdges()
-      .nodes.filter((n) => n.type === nType)
+      .nodes.filter((n) => n.origin === undefined && n.type === nType)
       .map((n) => n.data.type.name);
   };
 

@@ -37,7 +37,7 @@ export const GroupNode: FC<GroupNodeProps> = (props) => {
       <Group gap={4} style={{justifyContent: 'center', padding: '2%'}}>
         <Text size="sm" fs={"italic"}>Group:</Text>
         <Text size="sm" fw={600}>
-          {props.id}
+          {props.id.replace(props.data.groupName, '')}
         </Text>
       </Group>
 
