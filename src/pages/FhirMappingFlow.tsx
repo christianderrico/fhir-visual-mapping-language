@@ -262,12 +262,9 @@ export const FhirMappingFlow: FC<{
             "Insert value for this field",
           );
 
-          console.log("AGGIUNGI NODO", tree);
-          dumpTree(tree.cursor(), value);
-
           evaluate(tree, value, {
             data: {
-              xyPos: xyPos,
+              xyPos,
               target: connectionState.fromNode!.id,
               targetHandle: connectionState.fromHandle!.id!,
             },
@@ -280,10 +277,22 @@ export const FhirMappingFlow: FC<{
           onNodeConnect(xyPos, connectionState, { type: "source" });
         }
       } else {
-        const arg = await askExpression(
+        console.log(
+          fromNode?.data.alias + (fromHandle?.id ? "." + fromHandle?.id : ""),
+        );
+        const { tree, value } = await askExpression(
           "Copy value",
           fromNode?.data.alias + (fromHandle?.id ? "." + fromHandle?.id : ""),
         );
+
+        evaluate(tree, value, {
+          data: {
+            xyPos,
+            target: connectionState.fromNode!.id,
+            targetHandle: connectionState.fromHandle!.id!,
+          },
+          flow: ctx,
+        });
       }
     },
     [ctx, ctx.activeTab, screenToFlowPosition],

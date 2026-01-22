@@ -41,7 +41,7 @@ export function PromptModal({
   const [value, setValue] = useState(() => {
     switch (prompt.type) {
       case "expression":
-        return "";
+        return prompt.placeholder ?? "";
       case "select":
       case "select-option":
       case "select-implementation":
@@ -56,9 +56,9 @@ export function PromptModal({
       if (prompt.type === "expression") {
         return onSubmit({
           tree: parser.parse(value),
-          value
-        })
-      };
+          value,
+        });
+      }
       onSubmit(value);
     },
     [onSubmit, value],
@@ -135,7 +135,7 @@ export function PromptModal({
         )}
         {prompt?.type === "expression" && (
           <Box h="500px">
-            <ExpressionEditor value={value!} onChange={(e) => setValue(e)} />
+            <ExpressionEditor value={value} onChange={(e) => setValue(e)} />
           </Box>
         )}
         <Group gap={rem(16)} justify="end">

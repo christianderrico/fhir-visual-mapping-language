@@ -34,7 +34,9 @@ export function ExpressionEditor({
   const viewRef = useRef<EditorView | null>(null);
   const typeEnv = useTypeEnvironment();
   const { getActiveNodesAndEdges } = useFlow();
-  const nodes = getActiveNodesAndEdges().nodes.filter(x => x.type === "sourceNode").map(x => [x.data.alias, x.data.type.url] as [string, URL]);
+  const nodes = getActiveNodesAndEdges()
+    .nodes.filter((x) => x.type === "sourceNode")
+    .map((x) => [x.data.alias, x.data.type.url] as [string, URL]);
   const scopeEnv = new SimpleScopeEnvironment(Object.fromEntries(nodes));
   const [diagnostics, setDiagnostics] = useState<Diagnostic[]>([]);
 
