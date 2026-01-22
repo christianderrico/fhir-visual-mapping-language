@@ -145,8 +145,30 @@ function generateGroup(
 
   const srcs = sources_gen(groupName);
   const tgts = targets_gen(groupName);
+  const createFakeFMLNode = (id: string): FMLNode =>
+    new FMLNode({
+      id,
+      type: "fakeNode",
+      position: { x: 0, y: 0 },
+      data: { alias: "FAKENODE" },
+    });
 
-  [...srcs, ...tgts].forEach((n) => nodeMap.set(n.id, n));
+  const mockFMLSource = createFakeFMLNode("fakeSource");
+  const mockFMLTarget = createFakeFMLNode("fakeTarget");
+
+  const attachChildren = (parent: FMLNode, children: FMLNode[]) => {
+    children.forEach((child) => {
+      child.father = parent;
+      parent.addChild(child);
+    });
+  };
+
+  attachChildren(mockFMLSource, srcs);
+  attachChildren(mockFMLTarget, tgts);
+
+  [mockFMLSource, mockFMLTarget, ...srcs, ...tgts].forEach((node) =>
+    nodeMap.set(node.id, node),
+  );
 
   const getOrCreateNode = (node: Node): FMLNode => {
     if (!nodeMap.has(node.id)) {
@@ -195,20 +217,30 @@ function generateGroup(
   const lines = [];
   lines.push(
     "",
-    `group ${groupName}(${[...srcs.map((s, i) => (i === 0 ? "" : " ") 
-      + `source ${s.alias} : ${s.resource}`)]}, ${[...tgts.map((t) => `target ${t.alias} : ${t.resource}`)]}) {`,
+    `group ${groupName}(${[
+      ...srcs.map(
+        (s, i) => (i === 0 ? "" : " ") + `source ${s.alias} : ${s.resource}`,
+      ),
+    ]}, ${[...tgts.map((t) => `target ${t.alias} : ${t.resource}`)]}) {`,
   );
 
-  const sourceTree = createTreeVariables(srcs[0])
+  const sourceTree = createTreeVariables(mockFMLSource);
 
   if (srcs.length === 0 || tgts.length === 0) {
     lines.push("}");
     return lines.join("\n");
   } else {
-    //debugTree(tgts[0])
-    const dependencies = collectDependencies(tgts[0], (id) => nodeMap.get(id)!);
-    const result = printRuleTree(tgts[0], dependencies, sourceTree, lines)
-    result.push("}")
+    const dependencies = collectDependencies(
+      mockFMLTarget,
+      (id) => nodeMap.get(id)!,
+    );
+    const result = printRuleTree(
+      mockFMLTarget,
+      dependencies,
+      sourceTree,
+      lines,
+    );
+    result.push("}");
     return result.join("\n");
   }
 }

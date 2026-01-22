@@ -16,6 +16,8 @@ export function toFMLNodeType(type: string): NodeType {
       return "targetNode";
     case "groupNode":
       return "groupNode";
+    case "fakeNode":
+      return 'fakeNode';
     default:
       return "sourceTargetNode";
   }
@@ -62,6 +64,10 @@ export function isGroupNode(node: FMLBaseEntity): node is FMLGroupNode {
   return node.type === "groupNode"
 }
 
+export function isFakeNode(node: FMLBaseEntity): node is FMLGroupNode {
+  return node.type === "fakeNode"
+}
+
 export function isNode(node: FMLBaseEntity): node is FMLNode {
   return "url" in node;
 }
@@ -81,6 +87,6 @@ export function findNode(nodes: Node[], id: string): Node {
 }
 
 export function debugTree(node: FMLBaseEntity, level = 0) {
-  console.log(" ".repeat(level) + node.toString());
+  console.log(" ".repeat(level) + (isNode(node) && isGroupNode(node) ? node.type : node.toString()));
   node.children.forEach((n) => debugTree(n, level + 1));
 }

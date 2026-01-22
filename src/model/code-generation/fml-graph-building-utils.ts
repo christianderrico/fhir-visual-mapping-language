@@ -3,6 +3,7 @@ import { FMLBaseEntity, FMLGroupNode, FMLRule } from "./fml-entities";
 import {
   findNode,
   getType,
+  isFakeNode,
   isGroupNode,
   isNode,
   isRule,
@@ -89,9 +90,9 @@ export function createTreeVariables(
   node: FMLBaseEntity,
   new_nodes: Dependency[] = [],
 ) {
-  if (isNode(node) && !isGroupNode(node)) {
+  if (isNode(node) && !isGroupNode(node) && !isFakeNode(node)) {
     const new_node = { alias: node.alias, children: [] } as Dependency;
-    if (node.father) {
+    if (node.father && !isFakeNode(node.father)) {
       const prev_node = _.first(
         new_nodes.map((n) =>
           n.children.find(
@@ -189,7 +190,7 @@ function buildChainToString(
   const deps = searchDependency(toSearch, sourceTree)
     .reverse()
     .slice(1)
-    .filter(d => d.includes("."));
+    .filter((d) => d.includes("."));
 
   if (deps.length === 0) return "";
 
@@ -225,7 +226,7 @@ export function printRuleTree(
   const indent = isGroupFMLNode(node) ? "" : getIndent(level);
 
   if (isGroupFMLNode(node)) {
-    node.setLevel(level - 1);
+    node.setLevel(level);
   }
 
   if (shouldPrint) {
@@ -239,14 +240,7 @@ export function printRuleTree(
 
   const nextLevel = shouldPrint ? level + 1 : level;
   for (const child of node.children) {
-    printRuleTree(
-      child,
-      dependencies,
-      sourceTree,
-      lines,
-      nextLevel,
-      visited,
-    );
+    printRuleTree(child, dependencies, sourceTree, lines, nextLevel, visited);
   }
 
   if (isSourceOrTargetRule(node) && hasChildren) {
@@ -255,4 +249,3 @@ export function printRuleTree(
 
   return lines;
 }
-

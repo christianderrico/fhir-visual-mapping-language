@@ -1,6 +1,12 @@
 import type { TransformName } from "src/components/nodes/TransformNode";
 import type { NodeType, Parameter, TransformParameter } from "./fml-types";
-import { isNode, isRule, isTransformParam, toFMLNodeType } from "./fml-utils";
+import {
+  isFakeNode,
+  isNode,
+  isRule,
+  isTransformParam,
+  toFMLNodeType,
+} from "./fml-utils";
 import type { Node } from "@xyflow/react";
 import _ from "lodash";
 
@@ -62,9 +68,10 @@ export class FMLGroupNode extends FMLNode {
 
   private getName(node: FMLBaseEntity, alias: string = ""): string[] {
     const { name, prev_alias } = this.resolveNodeName(node, alias);
-    console.log(name)
     return node.father
-      ? [name, ...this.getName(node.father, prev_alias)]
+      ? isFakeNode(node.father)
+        ? []
+        : [name, ...this.getName(node.father, prev_alias)]
       : [name];
   }
 
@@ -89,7 +96,7 @@ export class FMLGroupNode extends FMLNode {
       return {
         name:
           field != null
-            ? `${alias}.${field}.${previous_alias != "" ? previous_alias : (field + "_" + id)}`
+            ? `${alias}.${field}.${previous_alias != "" ? previous_alias : field + "_" + id}`
             : `${alias}.${alias}.${alias}`,
         prev_alias: alias,
       };
@@ -102,7 +109,9 @@ export class FMLGroupNode extends FMLNode {
       const { alias, field, id } = node.rightParam as TransformParameter;
 
       return {
-        name: field ? `${alias}.${field}.${previous_alias != "" ? previous_alias : (field + "_" + id)}` : alias,
+        name: field
+          ? `${alias}.${field}.${previous_alias != "" ? previous_alias : field + "_" + id}`
+          : alias,
         prev_alias: alias,
       };
     }
@@ -174,7 +183,7 @@ export class FMLGroupNode extends FMLNode {
 
     const sourcesOpenBlock = openBlocks;
 
-    let counter = 1;
+    let counter = 0;
     targets.forEach((s, i) => {
       const line = formatThenLine(
         s,
