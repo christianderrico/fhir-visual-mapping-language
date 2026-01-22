@@ -4,6 +4,8 @@ import classes from "./Node.module.css";
 import clsx from "clsx";
 import { List, ListItem, Text } from "@mantine/core";
 import { Datatype } from "src-common/fhir-types";
+import { useFlow } from "src/providers/FlowProvider";
+import { range } from "src/utils/functions";
 
 /**
  * Official transform values provided by `ValueSet/map-transform`.
@@ -40,7 +42,7 @@ type TransformNodeProps<P extends string = string> = NodeProps<
 >;
 
 const ConstNode: FC<TransformNodeProps<"const">> = (props) => {
-  const { transformName, args } = props.data;
+  const { args } = props.data;
 
   const value = useMemo(() => {
     if (args?.length !== 1) {
@@ -48,22 +50,24 @@ const ConstNode: FC<TransformNodeProps<"const">> = (props) => {
     }
     return args![0];
   }, [args]);
+  console.log("const nodeee", value);
 
-  const Argument: FC<{ value: Argument }> = useCallback(({ value }) => {
-    switch (value.datatype) {
+  const Argument: FC<Argument> = useCallback(({ value, datatype }) => {
+    switch (datatype) {
       case Datatype.INTEGER:
       case Datatype.UNSIGNEDINT:
       case Datatype.POSITIVEINT:
+      case Datatype.DECIMAL:
+      case Datatype.BOOLEAN:
         return (
           <Text fz="xs" c="blue">
-            {value.value}
+            {value}
           </Text>
         );
-      // case Datatype.STRING:
       default:
         return (
           <Text fz="xs" c="green">
-            "{value.value}"
+            "{value}"
           </Text>
         );
     }
@@ -76,7 +80,44 @@ const ConstNode: FC<TransformNodeProps<"const">> = (props) => {
         props.selected && classes.selected,
       )}
     >
-      <Argument value={value} />
+      <Argument {...value} />
+      <Handle
+        type="source"
+        position={Position.Right}
+        className={classes.handle}
+      />
+    </div>
+  );
+};
+
+const AppendNode: FC<TransformNodeProps<"append">> = (props) => {
+  const { id } = props;
+  const { getActiveNodesAndEdges } = useFlow();
+
+  const { edges } = getActiveNodesAndEdges();
+
+  const sourceCount = edges.filter((x) => x.target === id).length;
+
+  return (
+    <div
+      className={clsx(
+        classes.transformNode,
+        props.selected && classes.selected,
+      )}
+    >
+      <Text fz="xs">append</Text>
+      {range(sourceCount + 1).map((i) => (
+        <div
+          style={{ height: "10px", position: "relative", margin: "0 -12px 0" }}
+        >
+          <Handle
+            type="target"
+            position={Position.Left}
+            className={classes.handle}
+            id={i.toString()}
+          />
+        </div>
+      ))}
       <Handle
         type="source"
         position={Position.Right}
@@ -90,6 +131,7 @@ export const TransformNode: FC<TransformNodeProps> = (props) => {
   const { transformName, args } = props.data;
 
   if (transformName === "const") return <ConstNode {...(props as any)} />;
+  if (transformName === "append") return <AppendNode {...(props as any)} />;
 
   return (
     <div
@@ -106,6 +148,11 @@ export const TransformNode: FC<TransformNodeProps> = (props) => {
           ))}
         </List>
       )}
+      <Handle
+        type="target"
+        position={Position.Left}
+        className={classes.handle}
+      />
       <Handle
         type="target"
         position={Position.Left}

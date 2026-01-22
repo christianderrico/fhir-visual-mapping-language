@@ -23,3 +23,7 @@ export function extractNumberFromString(name: string): string {
   }
   return num.toString();
 }
+
+export function range(n: number): number[] {
+  return new Array(n).fill(null).map((_, i) => i);
+}

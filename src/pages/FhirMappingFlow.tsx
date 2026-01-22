@@ -15,6 +15,7 @@ import {
   type XYPosition,
 } from "@xyflow/react";
 import { type FC, useCallback, useEffect, useState } from "react";
+import { Tree, TreeCursor, type SyntaxNode } from "@lezer/common";
 import { Datatype } from "src-common/fhir-types";
 import { useTypeEnvironment } from "src/hooks/useTypeEnvironment";
 import type {
@@ -30,6 +31,8 @@ import { TransformNode } from "src/components/nodes/TransformNode";
 import { getNonPrimitiveType as _getNonPrimitiveType } from "../model/type-environment-utils";
 import { useFlow } from "src/providers/FlowProvider";
 import { GroupNode } from "src/components/nodes/GroupNode";
+import { dumpTree } from "src/language/util";
+import { evaluate } from "src/language/evaluation";
 
 const nodeTypes = {
   sourceNode: SourceNode,
@@ -47,6 +50,11 @@ export const FhirMappingFlow: FC<{
   onInit: OnInit;
 }> = ({ nodes, onNodesChange, edges, onEdgesChange, onInit }) => {
   const ctx = useFlow();
+  //
+  // const {nodes, edges} = ctx.getActiveNodesAndEdges();
+  // const onEdgesChange = ctx.changeEdgesByTab;
+  // const onNodesChange = ctx.changeNodesByTab;
+
   //const [activeTab, setActiveTab] = useState(ctx.activeTab);
 
   const typeEnv = useTypeEnvironment();
@@ -54,7 +62,7 @@ export const FhirMappingFlow: FC<{
     _getNonPrimitiveType,
     typeEnv,
   ]);
-  const { askText, askOption, askImplementation } = usePrompt();
+  const { askOption, askImplementation, askExpression } = usePrompt();
 
   const { screenToFlowPosition } = useReactFlow();
   const onConnect = useCallback((connection: Connection) => {
@@ -231,7 +239,6 @@ export const FhirMappingFlow: FC<{
         ) {
           const opts = typeEnv.getOptions(field.valueSet.url);
           const opt = await askOption(Object.values(opts));
-          console.log("AGGIUNGI NODO");
           return createNewNode({
             node: {
               type: "transformNode",
@@ -251,23 +258,20 @@ export const FhirMappingFlow: FC<{
         }
 
         if (fromNode.type === "targetNode" && field.kind === "primitive") {
-          const arg = await askText("Insert value for this field");
-          console.log("AGGIUNGI NODO");
-          return createNewNode({
-            node: {
-              type: "transformNode",
-              position: xyPos,
-              data: {
-                transformName: "const",
-                args: [arg],
-                groupName: ctx.activeTab,
-              },
-              origin: [0.5, 0.0] as [number, number],
-            },
-            attachTo: {
+          const { tree, value } = await askExpression(
+            "Insert value for this field",
+          );
+
+          console.log("AGGIUNGI NODO", tree);
+          dumpTree(tree.cursor(), value);
+
+          evaluate(tree, value, {
+            data: {
+              xyPos: xyPos,
               target: connectionState.fromNode!.id,
               targetHandle: connectionState.fromHandle!.id!,
             },
+            flow: ctx,
           });
         }
         if (fromNode.type === "targetNode") {
@@ -276,7 +280,7 @@ export const FhirMappingFlow: FC<{
           onNodeConnect(xyPos, connectionState, { type: "source" });
         }
       } else {
-        const arg = await askText(
+        const arg = await askExpression(
           "Copy value",
           fromNode?.data.alias + (fromHandle?.id ? "." + fromHandle?.id : ""),
         );

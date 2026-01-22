@@ -5,10 +5,11 @@ import { keymap } from "@codemirror/view";
 import { forEachDiagnostic } from "@codemirror/lint";
 import { useTypeEnvironment } from "src/hooks/useTypeEnvironment";
 import { SimpleScopeEnvironment } from "src/model/scope-environment";
-import { url } from "src-common/strict-types";
+import { type URL } from "src-common/strict-types";
 import { expressionLanguageSupport } from "src/language/expression-language-support";
-import { Badge, Tooltip } from "@mantine/core";
+import { Tooltip } from "@mantine/core";
 import { IconInfoCircle } from "@tabler/icons-react";
+import { useFlow } from "src/providers/FlowProvider";
 
 type Props = {
   value: string;
@@ -32,19 +33,10 @@ export function ExpressionEditor({
   const ref = useRef<HTMLDivElement | null>(null);
   const viewRef = useRef<EditorView | null>(null);
   const typeEnv = useTypeEnvironment();
-  const scopeEnv = new SimpleScopeEnvironment();
+  const { getActiveNodesAndEdges } = useFlow();
+  const nodes = getActiveNodesAndEdges().nodes.filter(x => x.type === "sourceNode").map(x => [x.data.alias, x.data.type.url] as [string, URL]);
+  const scopeEnv = new SimpleScopeEnvironment(Object.fromEntries(nodes));
   const [diagnostics, setDiagnostics] = useState<Diagnostic[]>([]);
-
-  useEffect(() => {
-    scopeEnv.set(
-      "motuPatient_1",
-      url("http://hl7.org/fhir/StructureDefinition/MotuPatient"),
-    );
-    scopeEnv.set(
-      "patient",
-      url("http://hl7.org/fhir/StructureDefinition/Patient"),
-    );
-  }, []);
 
   // Create editor once
   useEffect(() => {

@@ -15,14 +15,12 @@ import { useCallback, useState } from "react";
 import type { URL } from "src-common/strict-types";
 import type { ValueSetEntry } from "src-common/valueset-types";
 import { ExpressionEditor } from "./ExpressionEditor";
-import { EditorView } from "codemirror";
 import { parser } from "src-generated/grammar/fhir-expression-parser";
 
 export type PromptType =
   | { type: "select"; options: string[]; title: string }
   | { type: "select-option"; options: ValueSetEntry[]; title: string }
   | { type: "select-implementation"; options: URL[]; title: string }
-  | { type: "text"; title: string; placeholder?: string }
   | { type: "expression"; title: string; placeholder?: string };
 
 interface PromptModalProps {
@@ -42,7 +40,6 @@ export function PromptModal({
 
   const [value, setValue] = useState(() => {
     switch (prompt.type) {
-      case "text":
       case "expression":
         return "";
       case "select":
@@ -56,7 +53,12 @@ export function PromptModal({
   const onModalSubmit = useCallback(
     (e: React.FormEvent<HTMLDivElement>) => {
       e.preventDefault();
-      if (prompt.type === "expression") return onSubmit(parser.parse(value));
+      if (prompt.type === "expression") {
+        return onSubmit({
+          tree: parser.parse(value),
+          value
+        })
+      };
       onSubmit(value);
     },
     [onSubmit, value],
@@ -131,7 +133,7 @@ export function PromptModal({
             onChange={(value) => value && setValue(value)}
           />
         )}
-        {prompt?.type === "text" && (
+        {prompt?.type === "expression" && (
           <Box h="500px">
             <ExpressionEditor value={value!} onChange={(e) => setValue(e)} />
           </Box>

@@ -1,4 +1,5 @@
 import { createContext, useState, useContext } from "react";
+import {Tree} from '@lezer/common'
 import { PromptModal, type PromptType } from "../components/PromptModal";
 import type { ValueSetEntry } from "src-common/valueset-types";
 import type { URL } from "src-common/strict-types";
@@ -48,9 +49,7 @@ function useProvidePrompt() {
         title: "Select implementation",
       }),
     askExpression: (title: string, placeholder?: string) =>
-      ask<any>({ type: "expression", title, placeholder }),
-    askText: (title: string, placeholder?: string) =>
-      ask<string>({ type: "text", title, placeholder }),
+      ask<{ tree: Tree, value: string }>({ type: "expression", title, placeholder }),
     modalProps: {
       opened: !!state.prompt,
       prompt: state.prompt,
