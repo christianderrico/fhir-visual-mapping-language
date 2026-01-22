@@ -61,3 +61,21 @@
   border-radius: var(--mantine-radius-md);
   padding: var(--mantine-spacing-sm);
 }
+
+.appendNode {
+
+}
+
+.handleContainer {
+  height: 10px;
+  position: relative;
+  margin: 0 -12px 0;
+}
+
+.handleList {}
+
+.handleContainer:last-of-type > .handle {
+  border-style: dotted;
+}
+
+

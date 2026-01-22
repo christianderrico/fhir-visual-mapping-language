@@ -13,6 +13,7 @@ import {
   type OnInit,
   type OnNodesChange,
   type XYPosition,
+  addEdge,
 } from "@xyflow/react";
 import { type FC, useCallback, useEffect, useState } from "react";
 import { Tree, TreeCursor, type SyntaxNode } from "@lezer/common";
@@ -66,7 +67,7 @@ export const FhirMappingFlow: FC<{
 
   const { screenToFlowPosition } = useReactFlow();
   const onConnect = useCallback((connection: Connection) => {
-    ctx.addEdge({ ...connection, animated: true } as Edge);
+    // ctx.addEdge({ ...connection, animated: true } as Edge);
   }, []);
 
   const createNewNode = useCallback(
@@ -214,7 +215,8 @@ export const FhirMappingFlow: FC<{
       const { clientX, clientY } =
         "changedTouches" in event ? event.changedTouches[0] : event;
       const xyPos = screenToFlowPosition({ x: clientX, y: clientY });
-      const { isValid, fromNode, fromHandle } = connectionState;
+      const { isValid, fromNode, fromHandle, toNode, toHandle } =
+        connectionState;
 
       if (!isValid) {
         if (fromNode === null || fromHandle === null) return;
@@ -270,6 +272,7 @@ export const FhirMappingFlow: FC<{
             },
             flow: ctx,
           });
+          return;
         }
         if (fromNode.type === "targetNode") {
           onNodeConnect(xyPos, connectionState, { type: "target" });
@@ -277,22 +280,33 @@ export const FhirMappingFlow: FC<{
           onNodeConnect(xyPos, connectionState, { type: "source" });
         }
       } else {
-        console.log(
-          fromNode?.data.alias + (fromHandle?.id ? "." + fromHandle?.id : ""),
-        );
-        const { tree, value } = await askExpression(
-          "Copy value",
-          fromNode?.data.alias + (fromHandle?.id ? "." + fromHandle?.id : ""),
-        );
+        // isValid
+        if (toNode?.type === "transformNode" && fromNode !== null) {
+          ctx.addEdge({
+            id: toNode.id + "." + toHandle?.id,
+            source: fromNode.id,
+            sourceHandle: fromHandle?.id,
+            target: toNode.id,
+            targetHandle: toHandle?.id,
+          });
+          return;
+        }
 
-        evaluate(tree, value, {
-          data: {
-            xyPos,
-            target: connectionState.fromNode!.id,
-            targetHandle: connectionState.fromHandle!.id!,
-          },
-          flow: ctx,
-        });
+        if (fromNode?.type === "sourceNode" && toNode?.type === "targetNode") {
+          const { tree, value } = await askExpression(
+            "Copy value",
+            fromNode?.data.alias + (fromHandle?.id ? "." + fromHandle?.id : ""),
+          );
+
+          evaluate(tree, value, {
+            data: {
+              xyPos,
+              target: connectionState.fromNode!.id,
+              targetHandle: connectionState.fromHandle!.id!,
+            },
+            flow: ctx,
+          });
+        }
       }
     },
     [ctx, ctx.activeTab, screenToFlowPosition],

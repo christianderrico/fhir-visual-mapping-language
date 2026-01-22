@@ -2,6 +2,7 @@ import type { useFlow } from "src/providers/FlowProvider";
 import type { SyntaxNode, Tree } from "@lezer/common";
 import { Datatype } from "src-common/fhir-types";
 import type { XYPosition } from "@xyflow/react";
+import {v4 as uuid} from 'uuid';
 
 export interface EvaluationContext {
   data: {
@@ -50,9 +51,9 @@ export function evaluateReference(
     }
 
     const node = ctx.flow.getActiveNodesAndEdges().nodes.find(x => x.data.alias === identifier)!.id;
-    console.log(node)
 
-    const edgeId = ctx.data.target + "->" + ctx.data.targetHandle;
+    const edgeId = ctx.data.target + "." + ctx.data.targetHandle;
+    console.log('Reference', edgeId)
     ctx.flow.addEdge({
       id: edgeId,
       source: node,
@@ -125,7 +126,7 @@ export function evaluate(
       cursor.nextSibling(); // TransformArgs
       cursor.firstChild(); // TransformArg
 
-      const nodeId = "uuid";
+      const nodeId = uuid();
       ctx.flow.addNode({
         id: nodeId,
         position: ctx.data.xyPos,

@@ -102,22 +102,23 @@ const AppendNode: FC<TransformNodeProps<"append">> = (props) => {
     <div
       className={clsx(
         classes.transformNode,
+        classes.appendNode,
         props.selected && classes.selected,
       )}
     >
       <Text fz="xs">append</Text>
-      {range(sourceCount + 1).map((i) => (
-        <div
-          style={{ height: "10px", position: "relative", margin: "0 -12px 0" }}
-        >
-          <Handle
-            type="target"
-            position={Position.Left}
-            className={classes.handle}
-            id={i.toString()}
-          />
-        </div>
-      ))}
+      <div className={classes.handleList}>
+        {range(sourceCount + 1).map((i) => (
+          <div key={i} className={classes.handleContainer}>
+            <Handle
+              type="target"
+              position={Position.Left}
+              className={classes.handle}
+              id={i.toString()}
+            />
+          </div>
+        ))}
+      </div>
       <Handle
         type="source"
         position={Position.Right}
@@ -148,16 +149,6 @@ export const TransformNode: FC<TransformNodeProps> = (props) => {
           ))}
         </List>
       )}
-      <Handle
-        type="target"
-        position={Position.Left}
-        className={classes.handle}
-      />
-      <Handle
-        type="target"
-        position={Position.Left}
-        className={classes.handle}
-      />
       <Handle
         type="source"
         position={Position.Right}
