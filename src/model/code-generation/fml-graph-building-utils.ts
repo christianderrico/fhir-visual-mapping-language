@@ -108,7 +108,7 @@ export function createTreeVariables(
     }
 
     const children = new Set(node.children);
-    
+
     Array.from(children.values()).forEach((c) => {
       if (isRule(c) && isTransformParam(c.rightParam)) {
         const alias = c.rightParam.alias;
@@ -122,6 +122,7 @@ export function createTreeVariables(
           } as Dependency);
       }
     });
+    
   }
   node.children.forEach((c) => createTreeVariables(c, new_nodes));
   return new_nodes;

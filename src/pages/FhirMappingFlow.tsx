@@ -139,7 +139,6 @@ export const FhirMappingFlow: FC<{
             if (choice) {
               const choiceType = getNonPrimitive(choice);
               const id = ctx.idGen.current.getId();
-              console.log("AGGIUNGI NODO");
               return createNewNode({
                 node: {
                   type: "targetNode",

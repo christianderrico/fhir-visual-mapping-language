@@ -31,6 +31,8 @@ export default function EditorTabs() {
 
       const { source, target } = resByTab.reduce(
         (acc, n) => {
+          if(n.origin)
+            return acc
           if (n.type === "sourceNode") acc.source.push(n);
           else if (n.type === "targetNode") acc.target.push(n);
           return acc;
