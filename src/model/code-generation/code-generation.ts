@@ -225,6 +225,7 @@ function generateGroup(
   );
 
   const sourceTree = createTreeVariables(mockFMLSource);
+  console.log(sourceTree)
 
   if (srcs.length === 0 || tgts.length === 0) {
     lines.push("}");

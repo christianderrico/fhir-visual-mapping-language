@@ -206,7 +206,7 @@ export class FMLGroupNode extends FMLNode {
       (openBlocks > 0 ? "\n" : "");
 
     for (let i = openBlocks; i > 0; i--) {
-      result += indent.repeat(this.level + i) + "};" + (i == 1 ? "" : "\n");
+      result += indent.repeat(this.level + i - 1) + "};" + (i == 1 ? "" : "\n");
     }
 
     return result;

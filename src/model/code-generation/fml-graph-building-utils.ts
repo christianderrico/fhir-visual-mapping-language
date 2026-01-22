@@ -92,20 +92,23 @@ export function createTreeVariables(
 ) {
   if (isNode(node) && !isGroupNode(node) && !isFakeNode(node)) {
     const new_node = { alias: node.alias, children: [] } as Dependency;
+
     if (node.father && !isFakeNode(node.father)) {
-      const prev_node = _.first(
-        new_nodes.map((n) =>
-          n.children.find(
-            (c: Dependency) => c.field === new_node.alias.split("_")[0],
-          ),
-        ),
-      );
+      const field = new_node.alias.split("_")[0];
+
+      const prev_node = new_nodes
+        .flatMap((n) => n.children)
+        .find((c: Dependency) => c.field === field);
+
       new_node.father = prev_node;
       prev_node?.children.push(new_node);
+
     } else if (!new_nodes.find((n) => n.alias === new_node.alias)) {
       new_nodes.push(new_node);
     }
+
     const children = new Set(node.children);
+    
     Array.from(children.values()).forEach((c) => {
       if (isRule(c) && isTransformParam(c.rightParam)) {
         const alias = c.rightParam.alias;
