@@ -22,12 +22,16 @@ export function evaluateReference(
   cursor.firstChild();
   console.log("evaluateReference")
   console.log(cursor)
+  console.log('params', node, ctx.data.target, ctx.data.targetHandle)
   if (cursor.name === "Variable") {
     const identifier = doc.slice(cursor.from, cursor.to);
+    const node = ctx.flow.getActiveNodesAndEdges().nodes.find(x => x.data.alias === identifier)!.id;
+    const edgeId = ctx.data.target + "." + ctx.data.targetHandle;
     ctx.flow.addEdge({
-      id: "",
-      source: "",
-      target: "",
+      id: edgeId,
+      source: node,
+      target: ctx.data.target, 
+      targetHandle: ctx.data.targetHandle,
     });
   } else if (cursor.name === "FieldAccess") {
     cursor.firstChild(); // Variable

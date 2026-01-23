@@ -17,7 +17,11 @@ import {
 } from "@xyflow/react";
 import { type FC, useCallback, useEffect, useState } from "react";
 import { Tree, TreeCursor, type SyntaxNode } from "@lezer/common";
-import { Datatype } from "src-common/fhir-types";
+import {
+  Datatype,
+  type Field,
+  type PrimitiveCodeField,
+} from "src-common/fhir-types";
 import { useTypeEnvironment } from "src/hooks/useTypeEnvironment";
 import type {
   ElementLikeField,
@@ -34,6 +38,8 @@ import { useFlow } from "src/providers/FlowProvider";
 import { GroupNode } from "src/components/nodes/GroupNode";
 import { dumpTree } from "src/language/util";
 import { evaluate } from "src/language/evaluation";
+import { makeId } from "src/utils/field-based-id";
+import { toPlainObject } from "lodash";
 
 const nodeTypes = {
   sourceNode: SourceNode,
@@ -66,151 +72,158 @@ export const FhirMappingFlow: FC<{
   const { askOption, askImplementation, askExpression } = usePrompt();
 
   const { screenToFlowPosition } = useReactFlow();
-  const onConnect = useCallback((connection: Connection) => {
-    // ctx.addEdge({ ...connection, animated: true } as Edge);
-  }, []);
+  const onConnect = useCallback(() => {}, []);
 
-  const createNewNode = useCallback(
-    (opts: {
-      node: Omit<Node, "id">;
-      id?: string;
-      attachTo:
-        | {
-            target: string;
-            targetHandle: string;
-            source?: never;
-            sourceHandle?: never;
-          }
-        | {
-            source: string;
-            sourceHandle: string;
-            target?: never;
-            targetHandle?: never;
-          };
-    }) => {
-      const { node, attachTo, id: _id } = opts;
-      const id = _id ?? ctx.idGen.current.getId();
-      const edgeProperties =
-        "source" in attachTo
-          ? ({
-              id,
-              ...attachTo,
-              animated: true,
-              target: id,
-            } as {
-              animated: boolean;
-              id: string;
-              source: string;
-              sourceHandle: string;
-              target: string;
-              targetHandle?: never;
-            })
-          : {
-              id,
-              ...attachTo,
-              source: id,
-              animated: true,
-            };
-      ctx.addNode({ ...node, id });
-      ctx.addEdge({ ...edgeProperties });
-    },
-    [ctx, ctx.activeTab],
-  );
+  const isOptionField = (field: Field): field is PrimitiveCodeField => {
+    return (
+      field.kind === "primitive" &&
+      field.value === Datatype.CODE &&
+      field.valueSet !== undefined &&
+      field.valueSet.strength === "required"
+    );
+  };
 
-  const onNodeConnect = useCallback(
-    async (
-      xyPos: XYPosition,
-      connectionState: FinalConnectionState<InternalNode>,
-      opts: { type: "source" | "target" },
-    ) => {
-      const { type } = opts;
+  const onDroppedEdge: OnConnectEnd = useCallback(
+    async (event, connectionState) => {
+      const { clientX, clientY } =
+        "changedTouches" in event ? event.changedTouches[0] : event;
+      const { fromHandle } = connectionState;
+      const fromNode = connectionState.fromNode!;
+      const xyPos = screenToFlowPosition({ x: clientX, y: clientY });
+
+      if (fromHandle === null) return;
+
+      const type = fromNode.data.type as
+        | NonPrimitiveResource
+        | ElementLikeField
+        | ComplexField;
+      const fields =
+        type.kind === "complex"
+          ? getNonPrimitive(type.value)!.fields
+          : type.fields;
+      const field = fields[fromHandle.id!];
+
       if (
-        connectionState.fromNode !== null &&
-        connectionState.fromHandle !== null
+        fromNode.type === "targetNode" &&
+        isOptionField(field) &&
+        field.valueSet !== undefined
       ) {
-        const parentType = connectionState.fromNode.data.type as
-          | ElementLikeField
-          | NonPrimitiveResource;
-        const fieldName = connectionState.fromHandle.id as string;
-        const field = fieldName ? parentType.fields[fieldName] : undefined;
+        const candidates = typeEnv.getOptions(field.valueSet.url);
+        const chosen = await askOption(Object.values(candidates));
 
-        if (
-          type === "target" &&
-          field?.kind === "complex" &&
-          getNonPrimitive(field.value) !== undefined
-        ) {
-          if (getNonPrimitive(field.value)!.abstract) {
-            const abstractField = getNonPrimitive(field.value)!;
-            const candidates = typeEnv
-              .getImplementations(abstractField?.name)
-              .map((x) => x.url);
+        const nodeId = ctx.idGen.current.getId();
+        ctx.addNode({
+          id: nodeId,
+          type: "transformNode",
+          position: xyPos,
+          data: {
+            groupName: ctx.activeTab,
+            transformName: "const",
+            args: [{ datatype: Datatype.STRING, value: chosen }],
+          },
+          origin: [0.5, 0.0] as [number, number],
+        });
 
-            const choice = await askImplementation(candidates);
-            if (choice) {
-              const choiceType = getNonPrimitive(choice);
-              const id = ctx.idGen.current.getId();
-              console.log("AGGIUNGI NODO");
-              return createNewNode({
-                node: {
-                  type: "targetNode",
-                  position: xyPos,
-                  data: {
-                    type: choiceType,
-                    inner: true,
-                    expand: true,
-                    alias: asVariableName(choiceType?.name ?? "") + "_" + id,
-                    groupName: ctx.activeTab,
-                  },
-                  origin: [0.5, 0.0] as [number, number],
-                },
-                id,
-                attachTo: {
-                  target: connectionState.fromNode!.id,
-                  targetHandle: connectionState.fromHandle!.id!,
-                },
-              });
-            }
-          }
-        } else if (type === "target" && field?.kind === "complex") {
-          console.error(
-            `Couldn't find type ${field.value} in type environment`,
-          );
-        }
+        const edgeId = makeId(fromNode.id, fromHandle.id);
+        ctx.addEdge({
+          id: edgeId,
+          source: nodeId,
+          target: fromNode.id,
+          targetHandle: fromHandle.id,
+        });
+        return;
+      }
+      if (fromNode.type === "targetNode" && field.kind === "primitive") {
+        const { tree, value } = await askExpression(
+          "Insert value for this field",
+        );
 
-        if (field?.kind === "complex" || field?.kind === "backbone-element") {
-          const id = ctx.idGen.current.getId();
-          createNewNode({
-            node: {
-              type: type + "Node",
-              position: xyPos,
-              data: {
-                alias: asVariableName(type.name ?? fieldName) + "_" + id,
-                type: field,
-                inner: true,
-                expand: true,
-                groupName: ctx.activeTab,
-              },
-              origin: [0.5, 0.0] as [number, number],
+        evaluate(tree, value, {
+          data: {
+            xyPos,
+            target: fromNode!.id,
+            targetHandle: fromHandle!.id!,
+          },
+          flow: ctx,
+        });
+        return;
+      }
+
+      // abstract field
+      if (
+        fromNode.type === "targetNode" &&
+        field?.kind === "complex" &&
+        getNonPrimitive(field.value) !== undefined &&
+        getNonPrimitive(field.value)!.abstract
+      ) {
+        const abstractField = getNonPrimitive(field.value)!;
+        const candidates = typeEnv
+          .getImplementations(abstractField.url)
+          .map((x) => x.url);
+
+        const choice = await askImplementation(candidates);
+        if (choice) {
+          const choiceType = getNonPrimitive(choice);
+          console.log("AGGIUNGI NODO");
+
+          const nodeId = ctx.idGen.current.getId();
+          ctx.addNode({
+            id: nodeId,
+            type: "targetNode",
+            position: xyPos,
+            data: {
+              type: choiceType,
+              inner: true,
+              expand: true,
+              alias: asVariableName(choiceType?.name ?? "") + "_" + nodeId,
+              groupName: ctx.activeTab,
             },
-            id,
-            attachTo:
-              type === "target"
-                ? {
-                    target: connectionState.fromNode!.id,
-                    targetHandle: connectionState.fromHandle!.id!,
-                  }
-                : {
-                    source: connectionState.fromNode!.id,
-                    sourceHandle: connectionState.fromHandle!.id!,
-                  },
+            origin: [0.5, 0.0] as [number, number],
           });
+
+          const edgeId = makeId(fromNode.id, fromHandle.id);
+          ctx.addEdge({
+            id: edgeId,
+            source: nodeId,
+            target: fromNode.id,
+            targetHandle: fromHandle.id,
+          });
+          return;
         }
       }
+
+      if (
+        fromNode.type === "targetNode" &&
+        (field.kind === "complex" || field.kind === "backbone-element")
+      ) {
+        const nodeId = ctx.idGen.current.getId();
+        ctx.addNode({
+          id: nodeId,
+          type: "targetNode",
+          position: xyPos,
+          data: {
+            alias: asVariableName(type.name ?? fromHandle.id!) + "_" + nodeId,
+            type: field,
+            inner: true,
+            expand: true,
+            groupName: ctx.activeTab,
+          },
+          origin: [0.5, 0.0] as [number, number],
+        });
+        const edgeId = makeId(fromNode.id, fromHandle.id);
+        ctx.addEdge({
+          id: edgeId,
+          source: nodeId,
+          target: fromNode.id,
+          targetHandle: fromHandle.id,
+        });
+        return;
+      }
     },
-    [ctx, ctx.activeTab],
+    [ctx],
   );
 
-  const onConnectEnd: OnConnectEnd = useCallback(
+  const onConnectEnd2: OnConnectEnd = useCallback(
     async (event, connectionState) => {
       const { clientX, clientY } =
         "changedTouches" in event ? event.changedTouches[0] : event;
@@ -218,98 +231,55 @@ export const FhirMappingFlow: FC<{
       const { isValid, fromNode, fromHandle, toNode, toHandle } =
         connectionState;
 
-      if (!isValid) {
-        if (fromNode === null || fromHandle === null) return;
-        if (fromNode.type === "transformNode") return;
+      if (fromNode === null) return;
+      if (!isValid) return onDroppedEdge(event, connectionState);
 
-        const type = fromNode.data.type as
-          | NonPrimitiveResource
-          | ElementLikeField
-          | ComplexField;
-        const fields =
-          type.kind === "complex"
-            ? getNonPrimitive(type.value)!.fields
-            : type.fields;
-        const field = fields[fromHandle.id!];
+      if (toNode?.type === "transformNode") {
+        ctx.addEdge({
+          id: toNode.id + "." + toHandle?.id,
+          source: fromNode.id,
+          sourceHandle: fromHandle?.id,
+          target: toNode.id,
+          targetHandle: toHandle?.id,
+        });
+        return;
+      }
 
-        if (
-          fromNode.type === "targetNode" &&
-          field.kind === "primitive" &&
-          field.value === Datatype.CODE &&
-          field.valueSet !== undefined &&
-          field.valueSet.strength === "required"
-        ) {
-          const opts = typeEnv.getOptions(field.valueSet.url);
-          const opt = await askOption(Object.values(opts));
-          return createNewNode({
-            node: {
-              type: "transformNode",
-              position: xyPos,
-              data: {
-                groupName: ctx.activeTab,
-                transformName: "const",
-                args: [{ datatype: Datatype.STRING, value: opt }],
-              },
-              origin: [0.5, 0.0] as [number, number],
-            },
-            attachTo: {
-              target: connectionState.fromNode!.id,
-              targetHandle: connectionState.fromHandle!.id!,
-            },
-          });
-        }
+      if (fromNode.type === "sourceNode" && toNode?.type === "targetNode") {
+        const { tree, value } = await askExpression(
+          "Copy value",
+          fromNode?.data.alias + (fromHandle?.id ? "." + fromHandle?.id : ""),
+        );
 
-        if (fromNode.type === "targetNode" && field.kind === "primitive") {
-          const { tree, value } = await askExpression(
-            "Insert value for this field",
-          );
-
-          evaluate(tree, value, {
-            data: {
-              xyPos,
-              target: connectionState.fromNode!.id,
-              targetHandle: connectionState.fromHandle!.id!,
-            },
-            flow: ctx,
-          });
-          return;
-        }
-        if (fromNode.type === "targetNode") {
-          onNodeConnect(xyPos, connectionState, { type: "target" });
-        } else if (fromNode.type === "sourceNode") {
-          onNodeConnect(xyPos, connectionState, { type: "source" });
-        }
-      } else {
-        // isValid
-        if (toNode?.type === "transformNode" && fromNode !== null) {
-          ctx.addEdge({
-            id: toNode.id + "." + toHandle?.id,
-            source: fromNode.id,
-            sourceHandle: fromHandle?.id,
+        evaluate(tree, value, {
+          data: {
+            xyPos,
             target: toNode.id,
-            targetHandle: toHandle?.id,
-          });
-          return;
-        }
+            targetHandle: toHandle?.id!,
+          },
+          flow: ctx,
+        });
+        return;
+      }
 
-        if (fromNode?.type === "sourceNode" && toNode?.type === "targetNode") {
-          const { tree, value } = await askExpression(
-            "Copy value",
-            fromNode?.data.alias + (fromHandle?.id ? "." + fromHandle?.id : ""),
-          );
+      if (fromNode.type === "targetNode" && toNode?.type === "sourceNode") {
+        const { tree, value } = await askExpression(
+          "Copy value",
+          toNode?.data.alias + (toHandle?.id ? "." + toHandle?.id : ""),
+        );
 
-          evaluate(tree, value, {
-            data: {
-              xyPos,
-              target: connectionState.fromNode!.id,
-              targetHandle: connectionState.fromHandle!.id!,
-            },
-            flow: ctx,
-          });
-        }
+        evaluate(tree, value, {
+          data: {
+            xyPos,
+            target: fromNode.id,
+            targetHandle: fromHandle?.id!,
+          },
+          flow: ctx,
+        });
+        return;
       }
     },
-    [ctx, ctx.activeTab, screenToFlowPosition],
+    [ctx],
   );
 
   const onDrop = useCallback(
@@ -348,7 +318,7 @@ export const FhirMappingFlow: FC<{
         onEdgesChange={onEdgesChange}
         nodeTypes={nodeTypes}
         onConnect={onConnect}
-        onConnectEnd={onConnectEnd}
+        onConnectEnd={onConnectEnd2}
         onInit={onInit}
         fitView
       >

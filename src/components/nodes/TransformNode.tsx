@@ -50,7 +50,6 @@ const ConstNode: FC<TransformNodeProps<"const">> = (props) => {
     }
     return args![0];
   }, [args]);
-  console.log("const nodeee", value);
 
   const Argument: FC<Argument> = useCallback(({ value, datatype }) => {
     switch (datatype) {

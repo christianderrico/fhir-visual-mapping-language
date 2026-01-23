@@ -51,7 +51,7 @@ export function isResource(obj: any): obj is Resource {
 export type Field = BaseField &
   (
     | { kind: "primitive"; value: Datatype.CODE; valueSet?: ValueSet }
-    | { kind: "primitive"; value: Exclude<Datatype, Datatype.CODE> }
+    | PrimitiveCodeField 
     | { kind: "backbone-element"; fields: Record<string, Field> }
     | { kind: "element"; fields: Record<string, Field> }
     | { kind: "complex"; value: URL }
@@ -66,6 +66,7 @@ interface BaseField {
   min: number;
   max: number | "*";
 }
+export type PrimitiveCodeField = BaseField & { kind: "primitive"; value: Datatype.CODE; valueSet?: ValueSet };
 
 type ValueSet = { url: URL, strength: 'required' | 'preferred' | 'extensible' }
 
