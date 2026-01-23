@@ -234,7 +234,10 @@ export const FhirMappingFlow: FC<{
       if (fromNode === null) return;
       if (!isValid) return onDroppedEdge(event, connectionState);
 
-      if (toNode?.type === "transformNode") {
+      if (
+        fromNode.type === "transformNode" ||
+        toNode?.type === "transformNode"
+      ) {
         ctx.addEdge({
           id: toNode.id + "." + toHandle?.id,
           source: fromNode.id,
@@ -277,6 +280,17 @@ export const FhirMappingFlow: FC<{
           flow: ctx,
         });
         return;
+      }
+
+      // Dragging source node (NOT a field) to a group
+      if (
+        fromNode.type === "sourceNode" &&
+        fromHandle !== null &&
+        toNode?.type === "groupNode"
+      ) {
+        // TODO: finish this
+        const res = fromNode.data.type as NonPrimitiveResource;
+        console.log("groupNode data", toNode.data, toHandle);
       }
     },
     [ctx],
