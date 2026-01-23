@@ -2,6 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import {
   getCodeSystem,
+  parseConceptMap,
   parseStructureDefinition,
   parseValuesetMap,
 } from "../src-common/structure-definition-utils";
@@ -28,6 +29,7 @@ const CONFIG = {
   localModule: "hl7.fhir.r4.core",
   outputDir: path.join(".", "src-generated"),
   cacheDir: path.join(".", "src-generated", "metadata"),
+  cacheConceptMap: path.join(".", "src-generated", "conceptmap-metadata"),
   cacheValueSetDir: path.join(".", "src-generated", "valueset-metadata"),
   fhirBaseUrl: "https://hl7.org/fhir/R4/",
   resources: {
@@ -83,10 +85,29 @@ async function getFilesWithPattern(dir: string, pattern: string) {
     .map((file) => path.join(dir, file));
 }
 
+async function getFiles(files: string[]) {
+  return (
+    await Promise.all(
+      files.map((fname) =>
+        getFilesWithPattern(
+          path.resolve("node_modules", CONFIG.localModule),
+          fname,
+        ),
+      ),
+    )
+  )
+    .flat()
+    .map((f) => {
+      const name = basename(f);
+      return name.replace(".json", "");
+    });
+}
+
 async function generate() {
   fs.mkdirSync(CONFIG.outputDir, { recursive: true });
   fs.mkdirSync(CONFIG.cacheDir, { recursive: true });
   fs.mkdirSync(CONFIG.cacheValueSetDir, { recursive: true });
+  fs.mkdirSync(CONFIG.cacheConceptMap, { recursive: true });
 
   const valueSet = await loadFhirResource<FhirResource>(
     CONFIG.fhirBaseUrl + CONFIG.resources.valueSetDefinedTypes,
@@ -157,6 +178,18 @@ async function generate() {
   await writeStructureDefinition(itemsResourceTypeCodes);
 
   console.log(`🎉 Done. Metadata in ${CONFIG.cacheDir}`);
+  const conceptMaps = await getFiles(["ConceptMap-*.json"]);
+  const maps = await Promise.all(
+    conceptMaps.map(loadFhirResource<FhirResource>),
+  );
+  maps
+    .map(parseConceptMap)
+    .forEach((reduced) =>
+      fs.writeFileSync(
+        path.join(CONFIG.cacheConceptMap, toLocalFilename(reduced.url)),
+        JSON.stringify(reduced, null, 2),
+      ),
+    );
 }
 
 async function writeStructureDefinition(typeCodes: string[]) {
@@ -182,21 +215,7 @@ async function writeStructureDefinition(typeCodes: string[]) {
   }
 
   if (fs.readdirSync(CONFIG.cacheValueSetDir).length == 0) {
-    const files = (
-      await Promise.all(
-        ["ValueSet-*.json", "CodeSystem-*.json"].map((fname) =>
-          getFilesWithPattern(
-            path.resolve("node_modules", CONFIG.localModule),
-            fname,
-          ),
-        ),
-      )
-    )
-      .flat()
-      .map((f) => {
-        const name = basename(f)
-        return name.replace(".json", "");
-      });
+    const files = await getFiles(["ValueSet-*.json", "CodeSystem-*.json"]);
 
     const valuesets = await Promise.all(
       files.map(loadFhirResource<FhirResource>),

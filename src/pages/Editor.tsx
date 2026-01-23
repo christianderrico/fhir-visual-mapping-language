@@ -10,7 +10,7 @@ import classes from "./Editor.module.css";
 import "./node.css";
 import { useDisclosure, useHotkeys } from "@mantine/hooks";
 import {
-  createGraph,
+  generateTemplate,
   type GraphProps,
 } from "src/model/code-generation/code-generation.ts";
 import PreviewModal from "src/components/PreviewModal";
@@ -18,9 +18,12 @@ import EditorTabs from "src/components/EditorTabs";
 import { useFlow } from "src/providers/FlowProvider";
 import { PromptProvider } from "src/providers/PromptProvider";
 import { FhirMappingFlow } from "./FhirMappingFlow";
+import NewGroupModal from "src/components/NewGroupModal";
 
 export const Editor: FC = () => {
   const ctx = useFlow();
+  const [isOpen, setOpened] = useState(false);
+
   useHotkeys([["Ctrl+z", ctx.undo]]);
 
   const onEdgesChange = useCallback((changes: EdgeChange[]) => {
@@ -116,6 +119,7 @@ export const Editor: FC = () => {
                   c="dark"
                   fw="normal"
                   style={{ minWidth: "4%" }}
+                  onClick={(_) => setOpened(true)}
                 >
                   Edit
                 </Button>
@@ -147,9 +151,9 @@ export const Editor: FC = () => {
                   style={{ minWidth: "6%" }}
                   onClick={() => {
                     setMyCodeString(
-                      createGraph({
-                        groupName: "main",
+                      generateTemplate({
                         templateName: ctx.templateName,
+                        groupNodesByTab: ctx.getGroupNodes(),
                         nodes: ctx.nodes,
                         edges: ctx.edges,
                       } as GraphProps),
@@ -179,6 +183,13 @@ export const Editor: FC = () => {
         </div>
       </header>
       <PreviewModal opened={opened} close={close} FMLCode={myCodeString} />
+      <NewGroupModal
+        disclosure={{
+          opened: isOpen,
+          closeModal: () => setOpened(false),
+        }}
+        isEditableGroup
+      />
       <div
         style={{
           width: "100%",

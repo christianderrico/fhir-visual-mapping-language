@@ -13,4 +13,4 @@ export type ValueParameter = {
 
 export type Parameter = TransformParameter | ValueParameter;
 
-export type NodeType = "sourceNode" | "targetNode" | "both";
+export type NodeType = "sourceNode" | "targetNode" | "groupNode" | "fakeNode" | "sourceTargetNode";

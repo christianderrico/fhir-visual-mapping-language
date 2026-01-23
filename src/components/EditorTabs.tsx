@@ -25,33 +25,32 @@ export default function EditorTabs() {
   const [editingTabId, setEditingTabId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
 
-  const addTab = (name: string) => {
-    ctx.addTab(name);
-    setOpened(false);
-  };
-
   const onDragStart = (event: React.DragEvent, nodeType: string) => {
-    const resByTab = ctx.getNodesByTab(nodeType);
+    if (ctx.activeTab !== nodeType) {
+      const resByTab = ctx.getNodesByTab(nodeType);
 
-    const { source, target } = resByTab.reduce(
-      (acc, n) => {
-        if (n.type === "sourceNode") acc.source.push(n);
-        else if (n.type === "targetNode") acc.target.push(n);
-        return acc;
-      },
-      { source: [], target: [] },
-    );
+      const { source, target } = resByTab.reduce(
+        (acc, n) => {
+          if(n.origin)
+            return acc
+          if (n.type === "sourceNode") acc.source.push(n);
+          else if (n.type === "targetNode") acc.target.push(n);
+          return acc;
+        },
+        { source: [], target: [] },
+      );
 
-    event.dataTransfer.setData(
-      "application/reactflow",
-      JSON.stringify({
-        id: nodeType,
-        groupName: ctx.activeTab,
-        sources: source.map((n) => n.data.type.name),
-        targets: target.map((n) => n.data.type.name),
-      }),
-    );
-    event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData(
+        "application/reactflow",
+        JSON.stringify({
+          id: nodeType,
+          groupName: ctx.activeTab,
+          sources: source.map((n) => n.data.type.name),
+          targets: target.map((n) => n.data.type.name),
+        }),
+      );
+      event.dataTransfer.effectAllowed = "move";
+    }
   };
 
   const commitRename = (tab: string) => {
@@ -67,8 +66,7 @@ export default function EditorTabs() {
         backgroundColor: "#1e1e1e",
         padding: 8,
         borderRadius: 6,
-        fontFamily:
-          "Segoe UI, system-ui, -apple-system, BlinkMacSystemFont",
+        fontFamily: "Segoe UI, system-ui, -apple-system, BlinkMacSystemFont",
         height: "500px",
       }}
     >
@@ -85,9 +83,7 @@ export default function EditorTabs() {
             flex: 1,
             minHeight: 0,
             backgroundColor:
-              theme.colorScheme === "dark"
-                ? theme.colors.dark[7]
-                : theme.white,
+              theme.colorScheme === "dark" ? theme.colors.dark[7] : theme.white,
             padding: theme.spacing.md,
           },
         })}
@@ -155,14 +151,11 @@ export default function EditorTabs() {
                         size="xs"
                         variant="unstyled"
                         value={editValue}
-                        onChange={(e) =>
-                          setEditValue(e.currentTarget.value)
-                        }
+                        onChange={(e) => setEditValue(e.currentTarget.value)}
                         onBlur={() => commitRename(tab)}
                         onKeyDown={(e) => {
                           if (e.key === "Enter") commitRename(tab);
-                          if (e.key === "Escape")
-                            setEditingTabId(null);
+                          if (e.key === "Escape") setEditingTabId(null);
                         }}
                         styles={{
                           input: {
@@ -180,25 +173,25 @@ export default function EditorTabs() {
                           gap: 4,
                         }}
                       >
-                        <span style={{ whiteSpace: "nowrap" }}>
-                          {tab}
-                        </span>
-                        <ActionIcon
-                          size="xs"
-                          variant="subtle"
-                          onMouseDown={(e) => e.stopPropagation()}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            ctx.removeTab(tab);
-                          }}
-                          style={{
-                            width: 14,
-                            height: 14,
-                            minWidth: 14,
-                          }}
-                        >
-                          <IconX size={10} />
-                        </ActionIcon>
+                        <span style={{ whiteSpace: "nowrap" }}>{tab}</span>
+                        {tab !== "Main" && (
+                          <ActionIcon
+                            size="xs"
+                            variant="subtle"
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              ctx.removeTab(tab);
+                            }}
+                            style={{
+                              width: 14,
+                              height: 14,
+                              minWidth: 14,
+                            }}
+                          >
+                            <IconX size={10} />
+                          </ActionIcon>
+                        )}
                       </div>
                     )}
                   </Group>
@@ -224,7 +217,6 @@ export default function EditorTabs() {
           opened,
           closeModal: () => setOpened(false),
         }}
-        onAddingTab={addTab}
       />
     </Box>
   );

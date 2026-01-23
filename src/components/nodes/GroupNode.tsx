@@ -5,6 +5,7 @@ import clsx from "clsx";
 import classes from "./Node.module.css";
 import "./groupNode.css";
 import _ from "lodash";
+import { range } from "src/utils/functions";
 
 type GroupNodeProps = NodeProps<
   Node<{
@@ -39,7 +40,7 @@ export const GroupNode: FC<GroupNodeProps> = (props) => {
           Group:
         </Text>
         <Text size="sm" fw={600}>
-          {props.id}
+          {props.id.replace(props.data.groupName, "")}
         </Text>
       </Group>
 
@@ -47,7 +48,7 @@ export const GroupNode: FC<GroupNodeProps> = (props) => {
 
       {/* Rows */}
       <Stack gap={4} style={{ position: "relative" }}>
-        {Array.from({ length: rowCount }).map((_, i) => {
+        {range(rowCount).map((i) => {
           const source = sources[i];
           const target = targets[i];
           const rowKey = `${source || ""}-${target || ""}-${i}`;

@@ -1,22 +1,12 @@
 import { Datatype, type Field, type Resource } from "./fhir-types";
 import { isElementLike } from "../src/model/type-environment-utils";
 import { url, type URL } from "./strict-types";
-import type {
-  ValueSet,
-  ValueSetEntry,
-} from "./valueset-types";
+import type { ValueSet, ValueSetEntry } from "./valueset-types";
 
 export class UndefinedSnapshotError extends Error {
   constructor(name: string) {
     super(`Undefined "snapshot" for StructureDefinition/${name}`);
   }
-}
-
-export async function fetchStructureDefinition(
-  uri: string,
-): Promise<Resource | undefined> {
-  const sd = await (await fetch(uri)).json();
-  return parseStructureDefinition(sd);
 }
 
 function isCodeField(
@@ -67,8 +57,7 @@ export function parseValuesetMap(codes: Record<URL, any>): ValueSet[] {
         (v: ValueSetEntry) => {
           return {
             system: v.system,
-            concept:
-              v.concept ?? codes[v.system]?.concept,
+            concept: v.concept ?? codes[v.system]?.concept,
           };
         },
       );
@@ -80,15 +69,50 @@ export function parseValuesetMap(codes: Record<URL, any>): ValueSet[] {
     });
 }
 
+function parseElement(element: any) {
+  const mappings = element.flatMap((e: { code: any; target: any[] }) =>
+    e.target
+      .filter((t) => ["equal", "equivalent"].includes(t.equivalence))
+      .map((t) => ({
+        s: e.code,
+        t: t.code,
+      })),
+  );
+
+  return mappings.length > 0 ? mappings : undefined;
+}
+
+function parseGroup(group: any) {
+  return group.map((g: { element: any; source: any; target: any }) => ({
+    source: g.source,
+    target: g.target,
+    mappings: parseElement(g.element),
+  }));
+}
+
+export function parseConceptMap(conceptMap: any) {
+  const { url, group } = conceptMap;
+  return { url, group: parseGroup(group) };
+}
+
 export function parseStructureDefinition(
   structureDefinition: any,
 ): Resource | undefined {
-  const { kind, name, type, abstract, url, title, derivation, baseDefinition, description } =
-    structureDefinition;
+  const {
+    kind,
+    name,
+    type,
+    abstract,
+    url,
+    title,
+    derivation,
+    baseDefinition,
+    description,
+  } = structureDefinition;
 
   // Skip profiles by comparing their name with the type (heuristic)
   if (!name.includes(type) && !type.includes(name)) return undefined;
-  
+
   const snapshot =
     structureDefinition.snapshot ?? structureDefinition.differential;
 

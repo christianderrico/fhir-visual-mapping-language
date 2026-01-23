@@ -11,7 +11,7 @@ import {
   Title,
 } from "@mantine/core";
 import { Text } from "@mantine/core";
-import { useCallback, useState } from "react";
+import { useEffect, useState } from "react";
 import type { Disclosure } from "./EditorTabs.tsx";
 import { useTypeEnvironment } from "src/hooks/useTypeEnvironment.ts";
 import { useFlow } from "src/providers/FlowProvider.tsx";
@@ -19,17 +19,35 @@ import _ from "lodash";
 
 interface MyModalProps {
   disclosure: Disclosure;
-  onAddingTab: (name: string) => void;
+  isEditableGroup?: true;
 }
 
-export default function NewGroupModal({ disclosure, onAddingTab }: MyModalProps) {
+export default function NewGroupModal({
+  disclosure,
+  isEditableGroup,
+}: MyModalProps) {
   const { opened, closeModal } = disclosure;
   const ctx = useFlow();
+
+  const getResourcesName = (nType: string): string[] => {
+    return ctx
+      .getActiveNodesAndEdges()
+      .nodes.filter((n) => n.origin === undefined && n.type === nType)
+      .map((n) => n.data.type.name);
+  };
 
   const [name, setName] = useState("");
   const [sources, setSources] = useState<string[]>([]);
   const [targets, setTargets] = useState<string[]>([]);
   const [produced, setProduced] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (opened && isEditableGroup) {
+      setSources(getResourcesName("sourceNode"));
+      setTargets(getResourcesName("targetNode"));
+      setName(ctx.activeTab);
+    }
+  }, [opened]);
 
   const environment = useTypeEnvironment();
 
@@ -56,9 +74,7 @@ export default function NewGroupModal({ disclosure, onAddingTab }: MyModalProps)
     return _getResourcesFromOptions(produced);
   }
 
-  const debounceSetter = useCallback(
-    _.debounce(setName, 500)
-  , [])
+  //const debounceSetter = useCallback(_.debounce(setName, 500), []);
 
   const options2Res = Object.fromEntries(
     environment.getResources().map((res) => [res.name, res]),
@@ -76,7 +92,9 @@ export default function NewGroupModal({ disclosure, onAddingTab }: MyModalProps)
         closeModal();
         resetProperties();
       }}
-      title={<Title order={3}>New group</Title>}
+      title={
+        <Title order={3}>{isEditableGroup ? "Edit group" : "New group"}</Title>
+      }
       size="lg"
       radius="md"
       padding="xl"
@@ -85,8 +103,10 @@ export default function NewGroupModal({ disclosure, onAddingTab }: MyModalProps)
         <Stack gap="md" style={{ flex: 1 }}>
           <TextInput
             label="Name"
+            value={name}
+            disabled={isEditableGroup && ctx.activeTab === "Main"}
             placeholder="Enter group name"
-            onChange={(e) => debounceSetter(e.currentTarget.value)}
+            onChange={(e) => setName(e.currentTarget.value)}
             required
             withAsterisk
           />
@@ -131,13 +151,20 @@ export default function NewGroupModal({ disclosure, onAddingTab }: MyModalProps)
             size="md"
             disabled={!name || sources.length === 0 || targets.length === 0}
             onClick={() => {
-              onAddingTab(name);
-              ctx.addNodes(name, getSources(), "sourceNode");
-              ctx.addNodes(name, getTargets(), "targetNode");
-              resetProperties();
+              if (isEditableGroup) {
+                ctx.updateTab(ctx.activeTab, name, getSources(), getTargets());
+              } else {
+                const isTabAdded = ctx.addTab(name);
+                if (isTabAdded) {
+                  ctx.addNodes(name, getSources(), "sourceNode");
+                  ctx.addNodes(name, getTargets(), "targetNode");
+                  resetProperties();
+                }
+              }
+              closeModal();
             }}
           >
-            Create
+            {isEditableGroup ? "Edit" : "Create"}
           </Button>
         </Stack>
 

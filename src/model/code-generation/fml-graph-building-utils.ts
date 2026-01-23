@@ -1,8 +1,10 @@
 import type { Edge, Node } from "@xyflow/react";
-import { FMLBaseEntity, FMLRule } from "./fml-entities";
+import { FMLBaseEntity, FMLGroupNode, FMLRule } from "./fml-entities";
 import {
   findNode,
   getType,
+  isFakeNode,
+  isGroupNode,
   isNode,
   isRule,
   isTransformParam,
@@ -10,6 +12,7 @@ import {
   transformParamFromNode,
   valueParam,
 } from "./fml-utils";
+import _ from "lodash";
 
 export function buildRuleFromEdge(nodes: Node[], edge: Edge): FMLRule {
   const targetNode = findNode(nodes, edge.target);
@@ -45,15 +48,21 @@ export function buildRuleFromEdge(nodes: Node[], edge: Edge): FMLRule {
     sourceNode.type! === "targetNode" &&
     targetNode.type! === "targetNode";
 
-  //copy
+  //copy - group
   const rightParam = transformParamFromNode(
     sourceNode,
     edge.sourceHandle ?? undefined,
   );
+  const type = getType(
+    toFMLNodeType(sourceNode.type!),
+    toFMLNodeType(targetNode.type!),
+  );
   return new FMLRule(
-    `copy_${leftParam.field}_${leftParam.id}`,
-    getType(toFMLNodeType(sourceNode.type!), toFMLNodeType(targetNode.type!)),
-    "copy",
+    type === "groupNode"
+      ? `group_${rightParam.id}`
+      : `copy_${leftParam.field ?? leftParam.resource}_${leftParam.id}`,
+    type,
+    type === "groupNode" ? undefined : "copy",
     rightParam,
     leftParam,
     isReference,
@@ -61,51 +70,62 @@ export function buildRuleFromEdge(nodes: Node[], edge: Edge): FMLRule {
 }
 
 export function attachParentChild(parent: FMLBaseEntity, child: FMLBaseEntity) {
-  if (parent.type === child.type || child.type === "both") {
+  if (
+    parent.type === child.type ||
+    ["sourceTargetNode", "groupNode"].includes(child.type)
+  ) {
     parent.addChild(child);
     child.father = parent;
   }
 }
 
-export function printVariablesTree(
-  node: FMLBaseEntity,
-  printRuleTree: (level: number, lines: string[]) => string[],
-  level: number = 0,
-  lines: string[] = [],
-) {
-  if (isNode(node)) {
-    const childrenToPrint = new Set(
-      node.children.map((c) => {
-        if (isRule(c) && isTransformParam(c.rightParam)) {
-          const alias = c.rightParam.alias;
-          const field = c.rightParam.field;
-          if (node.alias === alias) {
-            const fieldPart = field ? `.${field} as ${field}` : "";
-            return `${alias}${fieldPart} then {`;
-          } else {
-            return "";
-          }
-        }
-      }),
-    );
-    childrenToPrint.forEach((c) => {
-      const childIndent = "  ".repeat(level++);
-      lines.push(`${childIndent}${c}`);
-    });
-    node.children.forEach((c) => {
-      printVariablesTree(c, printRuleTree, level, lines);
-    });
-    lines = printRuleTree(level, lines);
-    for (let i = 0; i < childrenToPrint.size; i++) {
-      lines.push(`${"  ".repeat(--level)}} "level ${level}";`);
-    }
-  } else {
-    node.children.forEach((child) =>
-      printVariablesTree(child, printRuleTree, level, lines),
-    );
-  }
+interface Dependency {
+  alias: string;
+  field?: string;
+  father?: Dependency;
+  children: Dependency[];
+}
 
-  return lines.join("\n");
+export function createTreeVariables(
+  node: FMLBaseEntity,
+  new_nodes: Dependency[] = [],
+) {
+  if (isNode(node) && !isGroupNode(node) && !isFakeNode(node)) {
+    const new_node = { alias: node.alias, children: [] } as Dependency;
+
+    if (node.father && !isFakeNode(node.father)) {
+      const field = new_node.alias.split("_")[0];
+
+      const prev_node = new_nodes
+        .flatMap((n) => n.children)
+        .find((c: Dependency) => c.field === field);
+
+      new_node.father = prev_node;
+      prev_node?.children.push(new_node);
+
+    } else if (!new_nodes.find((n) => n.alias === new_node.alias)) {
+      new_nodes.push(new_node);
+    }
+
+    const children = new Set(node.children);
+
+    Array.from(children.values()).forEach((c) => {
+      if (isRule(c) && isTransformParam(c.rightParam)) {
+        const alias = c.rightParam.alias;
+        const field = c.rightParam.field;
+        if (new_node.alias != alias || field)
+          new_node.children.push({
+            alias,
+            field,
+            father: new_node,
+            children: [],
+          } as Dependency);
+      }
+    });
+    
+  }
+  node.children.forEach((c) => createTreeVariables(c, new_nodes));
+  return new_nodes;
 }
 
 export function collectDependencies(
@@ -117,7 +137,6 @@ export function collectDependencies(
     if (!dependencies.has(node.id)) {
       dependencies.set(node.id, []);
     }
-
     dependencies.get(node.id)!.push(...getPath(findNode(node.leftParam.id)));
   }
 
@@ -133,59 +152,104 @@ export function getPath(node: FMLBaseEntity, path: FMLBaseEntity[] = []) {
   else return [node, ...path];
 }
 
+function searchDependency(
+  toSearch: string,
+  dependencies: Dependency[],
+): string[] {
+  const getChainOfFathers = (dependency: Dependency): string[] => {
+    return [
+      dependency.alias + (dependency.field ? "." + dependency.field : ""),
+      ...(dependency.father ? getChainOfFathers(dependency.father) : []),
+    ];
+  };
+
+  return dependencies.flatMap((d) => {
+    const sourceAndField = d.alias + (d.field ? "." + d.field : "");
+    if (toSearch === sourceAndField) {
+      return getChainOfFathers(d);
+    } else return searchDependency(toSearch, d.children);
+  });
+}
+
+const INDENT = "  ";
+
+const isSourceOrTargetRule = (node: FMLBaseEntity): boolean =>
+  isRule(node) && !isGroupNode(node);
+
+const isGroupFMLNode = (node: FMLBaseEntity): node is FMLGroupNode =>
+  !isRule(node) && isGroupNode(node);
+
+const getIndent = (level: number) => INDENT.repeat(level);
+
+function buildChainToString(
+  node: FMLBaseEntity,
+  sourceTree: Dependency[],
+): string {
+  if (!isRule(node)) return "";
+  if (!isTransformParam(node.rightParam)) return "";
+
+  const { alias, field } = node.rightParam;
+  const toSearch = field ? `${alias}.${field}` : alias;
+
+  const deps = searchDependency(toSearch, sourceTree)
+    .reverse()
+    .slice(1)
+    .filter((d) => d.includes("."));
+
+  if (deps.length === 0) return "";
+
+  const sourceChain = deps.map((d, i) => {
+    if (i === deps.length - 1) {
+      const [, name] = d.split(".");
+      return `${d} as ${name}`;
+    }
+    return `${d} as ${deps[i + 1].split(".")[0]}`;
+  });
+
+  return sourceChain.length > 1
+    ? sourceChain.join(", ") + ", "
+    : sourceChain[0] + ", ";
+}
+
 export function printRuleTree(
   node: FMLBaseEntity,
   dependencies: Map<string, FMLBaseEntity[]>,
-  level: number = 0,
+  sourceTree: Dependency[],
   lines: string[] = [],
-  visited: Set<string> = new Set(),
+  level = 1,
+  visited = new Set<string>(),
 ): string[] {
   if (visited.has(node.id)) return lines;
-  const indent = "  ".repeat(level);
+
+  for (const dep of dependencies.get(node.id) ?? []) {
+    printRuleTree(dep, dependencies, sourceTree, lines, level, visited);
+  }
+
   const hasChildren = node.children.length > 0;
+  const shouldPrint = isSourceOrTargetRule(node) || isGroupFMLNode(node);
+  const indent = isGroupFMLNode(node) ? "" : getIndent(level);
 
-  const dep = dependencies.get(node.id);
-  dep?.forEach((n) => {
-    printRuleTree(n, dependencies, level, lines, visited);
-  });
-
-  if (!visited.has(node.id)) {
-    if (isRule(node)) {
-      if (!hasChildren) lines.push(indent + node.toString());
-      else lines.push(indent + node.toString() + " then {");
-    }
-    visited.add(node.id);
+  if (isGroupFMLNode(node)) {
+    node.setLevel(level);
   }
 
+  if (shouldPrint) {
+    const chainToString = buildChainToString(node, sourceTree);
+    const line = `${indent}${chainToString}${node.toString()}`;
+
+    lines.push(hasChildren ? `${line} then {` : line);
+  }
+
+  visited.add(node.id);
+
+  const nextLevel = shouldPrint ? level + 1 : level;
   for (const child of node.children) {
-    printRuleTree(child, dependencies, level + 1, lines, visited);
+    printRuleTree(child, dependencies, sourceTree, lines, nextLevel, visited);
   }
 
-  if (isRule(node) && hasChildren) {
-    lines.push(indent + `} "${node.id}";`);
+  if (isSourceOrTargetRule(node) && hasChildren) {
+    lines.push(`${getIndent(level)}} "${node.id}";`);
   }
 
   return lines;
 }
-
-// export function printRuleTree(
-//   node: FMLBaseEntity,
-//   level: number = 0,
-//   lines: string[] = [],
-// ): string[] {
-//   const indent = "  ".repeat(level);
-//   const hasChildren = node.children.length > 0;
-
-//   if (isRule(node)) {
-//     if (!hasChildren) lines.push(indent + node.toString());
-//     else lines.push(indent + node.toString() + " then {");
-//   }
-
-//   node.children.forEach((child) => printRuleTree(child, level + 1, lines));
-
-//   if (isRule(node) && hasChildren) {
-//     lines.push(indent + `} "${node.id}";`);
-//   }
-
-//   return lines;
-// }

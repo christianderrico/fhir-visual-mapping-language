@@ -17,11 +17,8 @@ import {
 } from "@xyflow/react";
 import { type FC, useCallback, useEffect, useState } from "react";
 import { Tree, TreeCursor, type SyntaxNode } from "@lezer/common";
-import {
-  Datatype,
-  type Field,
-  type PrimitiveCodeField,
-} from "src-common/fhir-types";
+import { type Field, type PrimitiveCodeField } from "src-common/fhir-types";
+import { Datatype } from "src-common/fhir-types";
 import { useTypeEnvironment } from "src/hooks/useTypeEnvironment";
 import type {
   ElementLikeField,
@@ -307,10 +304,11 @@ export const FhirMappingFlow: FC<{
         y: event.clientY,
       });
       const newGroupNode: Node = {
-        id: group.id,
+        id: `${group.id}${group.groupName}`,
         type: "groupNode",
         position,
         data: {
+          alias: group.groupName,
           groupName: group.groupName,
           sources: group.sources,
           targets: group.targets,
