@@ -223,7 +223,7 @@ export const FhirMappingFlow: FC<{
     [ctx],
   );
 
-  const onConnectEnd2: OnConnectEnd = useCallback(
+  const onConnectEnd: OnConnectEnd = useCallback(
     async (event, connectionState) => {
       const { clientX, clientY } =
         "changedTouches" in event ? event.changedTouches[0] : event;
@@ -318,7 +318,7 @@ export const FhirMappingFlow: FC<{
         onEdgesChange={onEdgesChange}
         nodeTypes={nodeTypes}
         onConnect={onConnect}
-        onConnectEnd={onConnectEnd2}
+        onConnectEnd={onConnectEnd}
         onInit={onInit}
         fitView
       >

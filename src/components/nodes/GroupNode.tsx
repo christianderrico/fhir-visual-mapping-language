@@ -1,5 +1,5 @@
 import { Text, Stack, Divider, Grid, Paper, Group, px } from "@mantine/core";
-import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { Handle, Position, type NodeProps, type Node } from "@xyflow/react";
 import { useCallback, type FC } from "react";
 import clsx from "clsx";
 import classes from "./Node.module.css";
@@ -34,8 +34,10 @@ export const GroupNode: FC<GroupNodeProps> = (props) => {
         border: "1px solid #DEE2E6",
       }}
     >
-      <Group gap={4} style={{justifyContent: 'center', padding: '2%'}}>
-        <Text size="sm" fs={"italic"}>Group:</Text>
+      <Group gap={4} style={{ justifyContent: "center", padding: "2%" }}>
+        <Text size="sm" fs={"italic"}>
+          Group:
+        </Text>
         <Text size="sm" fw={600}>
           {props.id}
         </Text>
@@ -77,7 +79,7 @@ export const GroupNode: FC<GroupNodeProps> = (props) => {
                       position={Position.Left}
                       className={clsx(classes.pink, classes.handle)}
                       style={{
-                        'left': '-3px'
+                        left: "-3px",
                       }}
                     />
                     <Text
@@ -99,7 +101,7 @@ export const GroupNode: FC<GroupNodeProps> = (props) => {
                   </>
                 )}
               </Grid.Col>
-              
+
               <Grid.Col
                 span={6}
                 style={{
@@ -132,7 +134,7 @@ export const GroupNode: FC<GroupNodeProps> = (props) => {
                       position={Position.Right}
                       className={clsx(classes.blue, classes.handle)}
                       style={{
-                        'right': '-3px'
+                        right: "-3px",
                       }}
                     />
                   </>
