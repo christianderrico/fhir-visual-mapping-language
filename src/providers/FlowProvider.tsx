@@ -177,7 +177,9 @@ function useProvideFlow() {
   }
 
   function addEdge(edge: Edge) {
-    setEdges((prev) => prev.concat({ ...edge }));
+    setEdges((prev) =>
+      prev.filter((x) => x.id !== edge.id).concat({ ...edge }),
+    );
   }
 
   function commitSnapshot() {
@@ -306,14 +308,15 @@ function useProvideFlow() {
       (prev) => new Set([...prev].map((p) => (p === prevName ? nextName : p))),
     );
     setNodes((nodes) =>
-      nodes.map((n) => (
-        { ...n,
-          id: n.type === 'groupNode' && n.id === prevName ? nextName : n.id,
-          data: { 
-            ...n.data, 
-            groupName: n.data.groupName === prevName ? nextName : n.data.groupName
-          } 
-        })),
+      nodes.map((n) => ({
+        ...n,
+        id: n.type === "groupNode" && n.id === prevName ? nextName : n.id,
+        data: {
+          ...n.data,
+          groupName:
+            n.data.groupName === prevName ? nextName : n.data.groupName,
+        },
+      })),
     );
   }
 
