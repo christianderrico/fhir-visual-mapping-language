@@ -130,7 +130,7 @@ export function StructureDefinitionInput({
           if (!v) return;
           onChange({
             ...state,
-            inputType: v,
+            inputType: v as InputMethod,
             definition: null,
             selectValue: null,
             jsonError: null,
@@ -197,7 +197,7 @@ export function StructureDefinitionInput({
             onChange={handleJsonChange}
             basicSetup={{
               lineNumbers: true,
-              scrollPastEnd: true,
+              //scrollPastEnd: true,
             }}
             height="300px"
           />

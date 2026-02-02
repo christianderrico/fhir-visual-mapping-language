@@ -48,10 +48,11 @@ export function transformParamFromNode(
   return {
     type: "transform",
     id: node.id,
+    originType: node.type,
     resource: node.data.type
       ? fieldExtractType(node.data.type as Field)
-      : field?.replace("source-", "").replace("target-", ""),
-    alias: node.data.alias,
+      : field?.replace("source-", "").replace("target-", "") ?? "",
+    alias: (node.data.alias as string),
     field,
   };
 }
@@ -72,7 +73,7 @@ export function isNode(node: FMLBaseEntity): node is FMLNode {
   return "url" in node;
 }
 
-export function valueParam(value: string): ValueParameter {
+export function valueParam(value: string | number): ValueParameter {
   return { type: "value", value };
 }
 

@@ -23,6 +23,7 @@ export function evaluateReference(
   console.log("evaluateReference")
   console.log(cursor)
   console.log('params', node, ctx.data.target, ctx.data.targetHandle)
+
   if (cursor.name === "Variable") {
     const identifier = doc.slice(cursor.from, cursor.to);
     const node = ctx.flow.getActiveNodesAndEdges().nodes.find(x => x.data.alias === identifier)!.id;
@@ -55,14 +56,17 @@ export function evaluateReference(
     }
 
     const node = ctx.flow.getActiveNodesAndEdges().nodes.find(x => x.data.alias === identifier)!.id;
+    console.log(ctx.flow.getActiveNodesAndEdges().nodes.find(x => x.data.alias === identifier))
 
     const edgeId = ctx.data.target + "." + ctx.data.targetHandle;
     console.log('Reference', edgeId)
+    console.log("NODO: ", node)
+    console.log(propertyChain)
     ctx.flow.addEdge({
-      id: edgeId,
+      id: uuid(),
       source: node,
       sourceHandle: propertyChain[0],
-      target: ctx.data.target, 
+      target: ctx.data.target,
       targetHandle: ctx.data.targetHandle,
     })
   }
@@ -104,9 +108,9 @@ export function evaluateLiteral(
     }
   })
 
-  const edgeId = ctx.data.target + "." + ctx.data.targetHandle;
+  //const edgeId = ctx.data.target + "." + ctx.data.targetHandle;
   ctx.flow.addEdge({
-    id: edgeId,
+    id: uuid(),
     source: nodeId,
     target: ctx.data.target,
     targetHandle: ctx.data.targetHandle,
@@ -145,6 +149,8 @@ export function evaluate(
       })
 
       const edgeId = ctx.data.target + "." + ctx.data.targetHandle;
+      console.log("EDGE ID: ", edgeId)
+
       ctx.flow.addEdge({
         id: edgeId,
         source: nodeId,

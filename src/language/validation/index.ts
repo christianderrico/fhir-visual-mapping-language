@@ -25,5 +25,6 @@ function buildPipeline(steps: LintSource[]): LintSource {
 
 // TODO:
 function variableResolution(view: EditorView): readonly Diagnostic[] | Promise<readonly Diagnostic[]> {
+  console.log(view)
   return [];
 }

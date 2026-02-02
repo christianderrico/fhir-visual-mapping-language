@@ -60,7 +60,6 @@ export type Field = BaseField &
   );
 
 interface BaseField {
-  url: URL;
   name: string;
   path: string;
   min: number;

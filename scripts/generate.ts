@@ -7,7 +7,7 @@ import {
   parseValuesetMap,
 } from "../src-common/structure-definition-utils";
 import { basename } from "path";
-import { url, type URL } from "../src-common/strict-types";
+import { maybeUrl, url, type URL } from "../src-common/strict-types";
 import { readdir } from "fs/promises";
 
 interface FhirResource {
@@ -124,7 +124,7 @@ async function generate() {
 
   const codeMap = new Map<string, string[]>();
   const maybeAdd = (cs: FhirResource) => {
-    if (cs.url && includes.includes(cs.url) && cs.concept) {
+    if (cs.url && includes.includes(maybeUrl(cs.url)!) && cs.concept) {
       codeMap.set(
         cs.url,
         cs.concept.map((c) => c.code),

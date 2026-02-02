@@ -1,7 +1,6 @@
 import {
   Modal,
   Select,
-  TextInput,
   Button,
   Group,
   rem,
@@ -21,7 +20,13 @@ export type PromptType =
   | { type: "select"; options: string[]; title: string }
   | { type: "select-option"; options: ValueSetEntry[]; title: string }
   | { type: "select-implementation"; options: URL[]; title: string }
-  | { type: "expression"; title: string; placeholder?: string };
+  | { type: "expression"; title: string; placeholder?: string }
+  | {
+      type: "alternatives";
+      title: string;
+      placeholder?: string;
+      options: string[];
+    };
 
 interface PromptModalProps {
   opened: boolean;
@@ -40,6 +45,7 @@ export function PromptModal({
 
   const [value, setValue] = useState(() => {
     switch (prompt.type) {
+      case "alternatives":
       case "expression":
         return prompt.placeholder ?? "";
       case "select":
@@ -49,19 +55,22 @@ export function PromptModal({
     }
   });
 
+  const [option, setOption] = useState("");
+
   const onModalClose = onClose;
   const onModalSubmit = useCallback(
     (e: React.FormEvent<HTMLDivElement>) => {
       e.preventDefault();
-      if (prompt.type === "expression") {
+      if (prompt.type === "expression" || prompt.type === "alternatives") {
         return onSubmit({
           tree: parser.parse(value),
           value,
+          option,
         });
       }
       onSubmit(value);
     },
-    [onSubmit, value],
+    [onSubmit, value, option],
   );
 
   const renderSelectOption: SelectProps["renderOption"] = ({ option }) => (
@@ -114,7 +123,7 @@ export function PromptModal({
             searchable
             autoSelectOnBlur
             onChange={(value) => value && setValue(value)}
-            renderOption={({ option, checked }) => (
+            renderOption={({ option }) => (
               <>
                 <span>{option.value.split("/").splice(-1)}</span>
                 <Text fz="xs" c="dimmed">
@@ -124,18 +133,35 @@ export function PromptModal({
             )}
           />
         )}
-        {prompt?.type === "select" && (
-          <Select
-            data={prompt.options}
-            value={value}
-            searchable
-            autoSelectOnBlur
-            onChange={(value) => value && setValue(value)}
-          />
-        )}
-        {prompt?.type === "expression" && (
+        {prompt?.type === "select" ||
+          (prompt?.type === "alternatives" && (
+            <Select
+              data={prompt.options}
+              value={prompt.type === "alternatives" ? option : value}
+              searchable
+              clearable
+              autoSelectOnBlur
+              onChange={(value) => {
+                if (value)
+                  if (prompt.type === "alternatives") {
+                    setOption(value);
+                    setValue("");
+                  } else {
+                    setValue(value);
+                    setOption("");
+                  }
+              }}
+            />
+          ))}
+        {(prompt?.type === "expression" || prompt?.type === "alternatives") && (
           <Box h="500px">
-            <ExpressionEditor value={value} onChange={(e) => setValue(e)} />
+            <ExpressionEditor
+              value={prompt.type === "alternatives" ? "" : value}
+              onChange={(e) => {
+                setValue(e);
+                setOption("");
+              }}
+            />
           </Box>
         )}
         <Group gap={rem(16)} justify="end">

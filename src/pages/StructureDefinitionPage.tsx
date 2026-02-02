@@ -59,7 +59,7 @@ export default function MappingDefinitionPage() {
   const navigate = useNavigate();
 
   const canProceed = Boolean(
-    templateName && source.definition && target.definition
+    templateName
   );
 
   const debouncedSetTemplateName = useMemo(

@@ -29,7 +29,7 @@ export type TransformName =
   | "id"
   | "cp";
 
-type Argument =
+export type Argument =
   | { datatype: Datatype.STRING; value: string }
   | { datatype: Datatype.INTEGER; value: number }
   | {
@@ -89,7 +89,7 @@ const ConstNode: FC<TransformNodeProps<"const">> = (props) => {
   );
 };
 
-const AppendNode: FC<TransformNodeProps<"append">> = (props) => {
+const AppendEvaluateNode: FC<TransformNodeProps<"append" | "evaluate">> = (props) => {
   const { id } = props;
   const { getActiveNodesAndEdges } = useFlow();
 
@@ -105,7 +105,7 @@ const AppendNode: FC<TransformNodeProps<"append">> = (props) => {
         props.selected && classes.selected,
       )}
     >
-      <Text fz="xs">append</Text>
+      <Text fz="xs">{props.data.transformName}</Text>
       <div className={classes.handleList}>
         {range(sourceCount + 1).map((i) => (
           <div key={i} className={classes.handleContainer}>
@@ -131,7 +131,7 @@ export const TransformNode: FC<TransformNodeProps> = (props) => {
   const { transformName, args } = props.data;
 
   if (transformName === "const") return <ConstNode {...(props as any)} />;
-  if (transformName === "append") return <AppendNode {...(props as any)} />;
+  if (transformName === "append" || transformName === "evaluate") return <AppendEvaluateNode {...(props as any)} />;
 
   return (
     <div

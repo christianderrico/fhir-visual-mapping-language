@@ -16,6 +16,7 @@ import type { Disclosure } from "./EditorTabs.tsx";
 import { useTypeEnvironment } from "src/hooks/useTypeEnvironment.ts";
 import { useFlow } from "src/providers/FlowProvider.tsx";
 import _ from "lodash";
+import type { Resource } from "src-common/fhir-types.ts";
 
 interface MyModalProps {
   disclosure: Disclosure;
@@ -33,7 +34,7 @@ export default function NewGroupModal({
     return ctx
       .getActiveNodesAndEdges()
       .nodes.filter((n) => n.origin === undefined && n.type === nType)
-      .map((n) => n.data.type.name);
+      .map((n) => (n.data.type as Resource).name);
   };
 
   const [name, setName] = useState("");
@@ -70,9 +71,9 @@ export default function NewGroupModal({
     return _getResourcesFromOptions(targets);
   }
 
-  function getProduced() {
-    return _getResourcesFromOptions(produced);
-  }
+  // function getProduced() {
+  //   return _getResourcesFromOptions(produced);
+  // }
 
   //const debounceSetter = useCallback(_.debounce(setName, 500), []);
 

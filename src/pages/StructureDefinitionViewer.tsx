@@ -22,6 +22,7 @@ import {
 } from "@tabler/icons-react";
 import { first, isString } from "lodash";
 import { useMemo } from "react";
+import { isField } from "src-common/fhir-types";
 import type { URL } from "src-common/strict-types";
 import { basename, isUrl } from "src-common/strict-types";
 
@@ -48,7 +49,7 @@ function MyLeaf({
   tree,
   level,
 }: RenderTreeNodePayload & { tree: ReturnType<typeof useTree> }) {
-  const [range, value] = node.label.toString().split("_", 2);
+  const [range, value] = node.label?.toString().split("_", 2) ?? [""];
 
   return (
     <Group
@@ -99,7 +100,7 @@ function getValue(value: NestedValue | undefined): string {
       return getValue(first(value));
     }
 
-    return `{ ${value.map((v) => (isString(v) && isUrl(v) ? basename(v) : `${v.kind === "reference" ? v.kind + ":" : ""} ${getValue(v.value)}`)).join(" | ")} }`;
+    return `{ ${value.map((v) => (isString(v) && isUrl(v) ? basename(v) : isField(v) && Object.values(v).includes("value") ? `${v.kind === "reference" ? v.kind + ":" : ""} ${getValue((v as { value: string }).value)}` : "")).join(" | ")} }`;
   }
 
   if (isUrl(value)) {

@@ -46,6 +46,7 @@ type SourceNodeProps = NodeProps<
 export const SourceNode: FC<SourceNodeProps> = (props) => {
   const typeEnvironment = useTypeEnvironment();
   const { type: typeDef, expand } = props.data;
+  //console.log(props.data)
   const getNonPrimitive = getNonPrimitiveType(typeEnvironment);
   const ctx = useFlow()
 
@@ -65,7 +66,7 @@ export const SourceNode: FC<SourceNodeProps> = (props) => {
     );
 
   const fields = useMemo(() => {
-    return fs.length > 0 ? <Fields fields={filterFields(fs)} /> : "(empty)";
+    return fs.length > 0 ? <Fields fields={filterFields(fs)} /> : "";
   }, [typeEnvironment, typeDef, expand]);
 
   return (

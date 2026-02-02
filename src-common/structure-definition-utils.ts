@@ -164,7 +164,7 @@ export function parseStructureDefinition(
 
     if (binding && isCodeField(field))
       field.valueSet = {
-        url: _getValuesetsUrl(binding),
+        url: _getValuesetsUrl(binding)!,
         strength: binding.strength,
       };
 

@@ -5,6 +5,8 @@ import { useState } from "react";
 import classes from "./tabs.module.css";
 import NewGroupModal from "./NewGroupModal.tsx";
 import { useFlow } from "src/providers/FlowProvider.tsx";
+import { type Node } from "@xyflow/react";
+import type { Resource } from "src-common/fhir-types.ts";
 
 export interface Disclosure {
   opened: boolean;
@@ -29,7 +31,7 @@ export default function EditorTabs() {
     if (ctx.activeTab !== nodeType) {
       const resByTab = ctx.getNodesByTab(nodeType);
 
-      const { source, target } = resByTab.reduce(
+      const { source, target } = resByTab.reduce<{source: Node[], target: Node[]}>(
         (acc, n) => {
           if(n.origin)
             return acc
@@ -45,8 +47,8 @@ export default function EditorTabs() {
         JSON.stringify({
           id: nodeType,
           groupName: ctx.activeTab,
-          sources: source.map((n) => n.data.type.name),
-          targets: target.map((n) => n.data.type.name),
+          sources: source.map((n) => (n.data.type as Resource).name),
+          targets: target.map((n) => (n.data.type as Resource).name),
         }),
       );
       event.dataTransfer.effectAllowed = "move";
@@ -61,15 +63,7 @@ export default function EditorTabs() {
   };
 
   return (
-    <Box
-      sx={{
-        backgroundColor: "#1e1e1e",
-        padding: 8,
-        borderRadius: 6,
-        fontFamily: "Segoe UI, system-ui, -apple-system, BlinkMacSystemFont",
-        height: "500px",
-      }}
-    >
+    <Box>
       <Tabs
         value={ctx.activeTab}
         onChange={(v) => v && ctx.setActiveTab(v)}
@@ -82,8 +76,6 @@ export default function EditorTabs() {
           panel: {
             flex: 1,
             minHeight: 0,
-            backgroundColor:
-              theme.colorScheme === "dark" ? theme.colors.dark[7] : theme.white,
             padding: theme.spacing.md,
           },
         })}
@@ -123,11 +115,6 @@ export default function EditorTabs() {
                     }
                   }}
                   styles={{
-                    root: {
-                      height: "100%",
-                      padding: 0,
-                      marginRight: 2,
-                    },
                     tab: {
                       borderRadius: "4px 4px 0 0",
                       padding: "6px 12px",

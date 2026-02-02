@@ -1,6 +1,6 @@
-import { Text, Stack, Divider, Grid, Paper, Group, px } from "@mantine/core";
+import { Text, Stack, Divider, Grid, Paper, Group } from "@mantine/core";
 import { Handle, Position, type NodeProps, type Node } from "@xyflow/react";
-import { useCallback, type FC } from "react";
+import { type FC } from "react";
 import clsx from "clsx";
 import classes from "./Node.module.css";
 import "./groupNode.css";

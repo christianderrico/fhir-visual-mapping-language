@@ -1,22 +1,18 @@
 import {
+  //addEdge,
   Background,
   Controls,
   ReactFlow,
   useReactFlow,
-  type Connection,
   type Edge,
   type Node,
-  type FinalConnectionState,
-  type InternalNode,
   type OnConnectEnd,
   type OnEdgesChange,
   type OnInit,
   type OnNodesChange,
-  type XYPosition,
-  addEdge,
 } from "@xyflow/react";
-import { type FC, useCallback, useEffect, useState } from "react";
-import { Tree, TreeCursor, type SyntaxNode } from "@lezer/common";
+import { type FC, useCallback } from "react";
+//import { Tree, TreeCursor, type SyntaxNode } from "@lezer/common";
 import { type Field, type PrimitiveCodeField } from "src-common/fhir-types";
 import { Datatype } from "src-common/fhir-types";
 import { useTypeEnvironment } from "src/hooks/useTypeEnvironment";
@@ -33,10 +29,10 @@ import { TransformNode } from "src/components/nodes/TransformNode";
 import { getNonPrimitiveType as _getNonPrimitiveType } from "../model/type-environment-utils";
 import { useFlow } from "src/providers/FlowProvider";
 import { GroupNode } from "src/components/nodes/GroupNode";
-import { dumpTree } from "src/language/util";
+//import { dumpTree } from "src/language/util";
 import { evaluate } from "src/language/evaluation";
 import { makeId } from "src/utils/field-based-id";
-import { toPlainObject } from "lodash";
+//import { toPlainObject } from "lodash";
 
 const nodeTypes = {
   sourceNode: SourceNode,
@@ -66,7 +62,8 @@ export const FhirMappingFlow: FC<{
     _getNonPrimitiveType,
     typeEnv,
   ]);
-  const { askOption, askImplementation, askExpression } = usePrompt();
+  const { askOption, askImplementation, askExpression, askAlternatives } =
+    usePrompt();
 
   const { screenToFlowPosition } = useReactFlow();
   const onConnect = useCallback(() => {}, []);
@@ -122,6 +119,7 @@ export const FhirMappingFlow: FC<{
         });
 
         const edgeId = makeId(fromNode.id, fromHandle.id);
+
         ctx.addEdge({
           id: edgeId,
           source: nodeId,
@@ -188,7 +186,6 @@ export const FhirMappingFlow: FC<{
           return;
         }
       }
-
       if (
         fromNode.type === "targetNode" &&
         (field.kind === "complex" || field.kind === "backbone-element")
@@ -199,7 +196,7 @@ export const FhirMappingFlow: FC<{
           type: "targetNode",
           position: xyPos,
           data: {
-            alias: asVariableName(type.name ?? fromHandle.id!) + "_" + nodeId,
+            alias: asVariableName(fromHandle.id!) + "_" + nodeId,
             type: field,
             inner: true,
             expand: true,
@@ -215,6 +212,54 @@ export const FhirMappingFlow: FC<{
           targetHandle: fromHandle.id,
         });
         return;
+      }
+      if (
+        fromNode.type === "targetNode" &&
+        field.kind === "alternatives" &&
+        !connectionState.toHandle
+      ) {
+        const objectsToCreate = field.value
+          .filter((v) => ["complex"].includes(v.kind))
+          .map((v) => (v.kind === "complex" ? v.value : ""));
+
+        const { tree, value, option } = await askAlternatives(
+          "Choose value for this field",
+          objectsToCreate,
+        );
+        if (value && tree) {
+          evaluate(tree, value, {
+            data: {
+              xyPos,
+              target: fromNode!.id,
+              targetHandle: fromHandle!.id!,
+            },
+            flow: ctx,
+          });
+        } else if (option) {
+          const nodeId = ctx.idGen.current.getId();
+          const type = field.value.find(fValue => fValue.kind === "complex" && fValue.value === option)
+          ctx.addNode({
+            id: nodeId,
+            type: "targetNode",
+            position: xyPos,
+            data: {
+              alias: asVariableName(option) + "_" + nodeId,
+              type: {...type, name: option},
+              inner: true,
+              expand: true,
+              groupName: ctx.activeTab,
+            },
+            origin: [0.5, 0.0] as [number, number],
+          });
+          const edgeId = makeId(fromNode.id, fromHandle.id);
+          ctx.addEdge({
+            id: edgeId,
+            source: nodeId,
+            target: fromNode.id,
+            targetHandle: fromHandle.id,
+          });
+          return;
+        }
       }
     },
     [ctx],
@@ -236,10 +281,10 @@ export const FhirMappingFlow: FC<{
         toNode?.type === "transformNode"
       ) {
         ctx.addEdge({
-          id: toNode.id + "." + toHandle?.id,
+          id: toNode?.id + "." + toHandle?.id,
           source: fromNode.id,
           sourceHandle: fromHandle?.id,
-          target: toNode.id,
+          target: toNode?.id ?? "",
           targetHandle: toHandle?.id,
         });
         return;
@@ -286,7 +331,32 @@ export const FhirMappingFlow: FC<{
         toNode?.type === "groupNode"
       ) {
         // TODO: finish this
-        const res = fromNode.data.type as NonPrimitiveResource;
+        //const res = fromNode.data.type as NonPrimitiveResource;
+        ctx.addEdge({
+          id: toNode.id,
+          source: fromNode.id,
+          sourceHandle: fromHandle.id,
+          target: toNode.id,
+          targetHandle: toHandle?.id,
+        });
+        console.log("groupNode data", toNode.data, toHandle);
+      }
+
+      // Dragging source node (NOT a field) to a group
+      if (
+        fromNode.type === "targetNode" &&
+        fromHandle !== null &&
+        toNode?.type === "groupNode"
+      ) {
+        // TODO: finish this
+        //const res = fromNode.data.type as NonPrimitiveResource;
+        ctx.addEdge({
+          id: makeId(toNode.id, toHandle?.id),
+          source: toNode.id,
+          sourceHandle: toHandle?.id,
+          target: fromNode.id,
+          targetHandle: fromHandle?.id,
+        });
         console.log("groupNode data", toNode.data, toHandle);
       }
     },
@@ -308,7 +378,7 @@ export const FhirMappingFlow: FC<{
         type: "groupNode",
         position,
         data: {
-          alias: group.groupName,
+          alias: group.id,
           groupName: group.groupName,
           sources: group.sources,
           targets: group.targets,

@@ -1,5 +1,5 @@
 import { type Edge, type Node } from "@xyflow/react";
-import { FMLGroupNode, FMLNode } from "./fml-entities";
+import { FMLGroupNode, FMLNode, FMLRule } from "./fml-entities";
 import {
   debugTree,
   findNode,
@@ -8,7 +8,7 @@ import {
 } from "./fml-utils";
 import {
   attachParentChild,
-  buildRuleFromEdge,
+  buildRules,
   collectDependencies,
   printRuleTree,
   createTreeVariables,
@@ -30,7 +30,10 @@ function getAllGroupsOrdered(
   const keys = groupNodesByTab[groupKey];
   orderedGroups = orderedGroups.concat(
     keys.flatMap((g) =>
-      getAllGroupsOrdered(groupNodesByTab, g.id.replace(g.data.groupName, "")),
+      getAllGroupsOrdered(
+        groupNodesByTab,
+        g.id.replace(g.data.groupName as string, ""),
+      ),
     ),
   );
   return orderedGroups;
@@ -179,68 +182,82 @@ function generateGroup(
     return nodeMap.get(node.id)!;
   };
 
-  edges.forEach((edge) => {
-    const rule = buildRuleFromEdge(nodes, edge);
-    const targetNode = getOrCreateNode(findNode(nodes, rule.leftParam.id));
+  const rules = buildRules(nodes, edges).filter(
+    (r) => r != null && r != undefined,
+  );
+  rules
+    .filter((r) => r.type !== "groupNode")
+    .forEach((rule) => {
+      rule = rule as FMLRule;
+      const targetNode = getOrCreateNode(
+        findNode(nodes, (rule as FMLRule).leftParam.id),
+      );
 
-    if (isTransformParam(rule.rightParam)) {
-      const sourceNode = getOrCreateNode(findNode(nodes, rule.rightParam.id));
-
-      if (rule.type === "sourceNode") {
-        attachParentChild(sourceNode, rule);
-        attachParentChild(rule, targetNode);
-      } else if (rule.type === "targetNode") {
-        const parent = rule.isReference ? sourceNode : targetNode;
-        const child = rule.isReference ? targetNode : sourceNode;
-        attachParentChild(parent, rule);
-        if (!rule.isReference) attachParentChild(rule, child);
-        else attachParentChild(child, rule);
-      } else if (rule.type === "sourceTargetNode") {
-        attachParentChild(sourceNode, rule);
-        attachParentChild(targetNode, rule);
-      } else if (rule.type === "groupNode") {
-        if (isGroupNode(sourceNode)) {
-          sourceNode.addTarget(rule);
+      rule.rightParams.forEach((right) => {
+        if (isTransformParam(right)) {
+          const sourceNode = getOrCreateNode(findNode(nodes, right.id));
+          if (rule.type === "sourceNode") {
+            attachParentChild(sourceNode, rule);
+            attachParentChild(rule, targetNode);
+          } else if (rule.type === "targetNode") {
+            const parent = rule.isReference ? sourceNode : targetNode;
+            const child = rule.isReference ? targetNode : sourceNode;
+            attachParentChild(parent, rule);
+            if (!rule.isReference) attachParentChild(rule, child);
+            else attachParentChild(child, rule);
+          } else if (rule.type === "sourceTargetNode") {
+            attachParentChild(sourceNode, rule);
+            attachParentChild(targetNode, rule);
+          }
+        } else {
           attachParentChild(targetNode, rule);
-          attachParentChild(rule, sourceNode);
-        } else if (isGroupNode(targetNode)) {
-          targetNode.addSource(rule);
-          attachParentChild(sourceNode, rule);
-          attachParentChild(rule, targetNode);
         }
-      }
-    } else {
-      attachParentChild(targetNode, rule);
-    }
-  });
+      });
+    });
 
-  const lines = [];
+  rules
+    .filter((r) => r.type === "groupNode")
+    .forEach((rule) => {
+      if (isGroupNode(rule)) {
+        rule.sources.forEach((s) =>
+          attachParentChild(getOrCreateNode(findNode(nodes, s.id)), rule),
+        );
+        rule.targets.forEach((t) =>
+          attachParentChild(getOrCreateNode(findNode(nodes, t.id)), rule),
+        );
+      }
+    });
+
+  const sourceTree = createTreeVariables(mockFMLSource);
+  const targetTree = createTreeVariables(mockFMLTarget);
+
+  debugTree(mockFMLTarget);
+  //debugTree(mockFMLSource);
+
+  let lines = [];
   lines.push(
     "",
     `group ${groupName}(${[
       ...srcs.map(
         (s, i) => (i === 0 ? "" : " ") + `source ${s.alias} : ${s.resource}`,
       ),
-    ]}, ${[...tgts.map((t) => `target ${t.alias} : ${t.resource}`)]}) {`,
+    ]}${srcs.length > 0 ? ", " : ""}${[...tgts.map((t) => `target ${t.alias} : ${t.resource}`)]}) {`,
   );
 
-  const sourceTree = createTreeVariables(mockFMLSource);
-
-  if (srcs.length === 0 || tgts.length === 0) {
-    lines.push("}");
-    return lines.join("\n");
-  } else {
+  if (srcs.length > 0 && tgts.length > 0) {
     const dependencies = collectDependencies(
       mockFMLTarget,
       (id) => nodeMap.get(id)!,
     );
-    const result = printRuleTree(
+    lines = printRuleTree(
       mockFMLTarget,
       dependencies,
-      sourceTree,
+      { sources: sourceTree, targets: targetTree },
       lines,
     );
-    result.push("}");
-    return result.join("\n");
   }
+
+  lines.push("}");
+  //console.log(lines.join("\n"))
+  return lines.join("\n");
 }

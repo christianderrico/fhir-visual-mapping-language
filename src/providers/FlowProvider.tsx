@@ -45,7 +45,7 @@ function createNode(
       type: resource,
       alias: `${asVariableName(resource.name)}_${id}`,
       groupName,
-      expand: false,
+      expand: true,
     },
   };
 }
@@ -178,7 +178,7 @@ function useProvideFlow() {
 
   function addEdge(edge: Edge) {
     setEdges((prev) =>
-      prev.filter((x) => x.id !== edge.id).concat({ ...edge }),
+      prev.filter((x) => x.id !== edge.id).concat({ ...edge, animated: true }),
     );
   }
 
@@ -257,6 +257,8 @@ function useProvideFlow() {
     templateName: string,
   ) {
     commitSnapshot();
+    //console.log(source)
+    //console.log(target)
 
     const group = "Main";
 
@@ -266,8 +268,8 @@ function useProvideFlow() {
 
     setNodes((prev) =>
       prev.concat([
-        createSourceNode(source, group, { x: 0, y: 0 }),
-        createTargetNode(target, group, { x: 700, y: 0 }),
+        ...(source != null ? [createSourceNode(source, group, { x: 0, y: 0 })] : []),
+        ...(target != null ? [createTargetNode(target, group, { x: 700, y: 0 })] : []),
       ]),
     );
 

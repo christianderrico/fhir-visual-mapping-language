@@ -42,6 +42,13 @@ function useProvidePrompt() {
         options,
         title: "Select option",
       }),
+    askAlternatives: (title:string, options: string[], placeholder?:string) => 
+      ask<{ tree: Tree, value: string, option: string}>({
+        type: 'alternatives',
+        options,
+        title,
+        placeholder
+      }),
     askImplementation: (options: URL[]) =>
       ask<URL | undefined>({
         type: "select-implementation",
@@ -50,6 +57,7 @@ function useProvidePrompt() {
       }),
     askExpression: (title: string, placeholder?: string) =>
       ask<{ tree: Tree, value: string }>({ type: "expression", title, placeholder }),
+
     modalProps: {
       opened: !!state.prompt,
       prompt: state.prompt,

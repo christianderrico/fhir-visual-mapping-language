@@ -33,6 +33,7 @@
     "@xyflow/react": "^12.9.2",
     "clsx": "^2.1.1",
     "codemirror": "^6.0.2",
+    "lezer": "^0.13.5",
     "lodash": "^4.17.21",
     "monaco-editor": "^0.55.1",
     "react": "^19.1.1",

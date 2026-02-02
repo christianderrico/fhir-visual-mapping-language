@@ -9,10 +9,8 @@ import {
   SimpleTypeEnvironment,
   type TypeEnvironment,
 } from "./model/type-environment";
-import MotuPatient from "./MotuPatient.json";
 import type { ValueSet } from "src-common/valueset-types";
 import type { URL } from "src-common/strict-types";
-import { parseStructureDefinition } from "src-common/structure-definition-utils";
 import StructureDefinitionPage from "./pages/StructureDefinitionPage";
 import { FlowProvider } from "./providers/FlowProvider";
 import { ReactFlowProvider } from "@xyflow/react";
@@ -33,7 +31,7 @@ function App() {
         return [(obj as Resource).url, obj] as [string, Resource];
       }),
     );
-    typeMap[MotuPatient.url] = parseStructureDefinition(MotuPatient);
+    //typeMap[MotuPatient.url] = parseStructureDefinition(MotuPatient);
     const valueSets = Object.values(sets).map(
       (e: any) => [e.url, e] as [URL, ValueSet],
     );

@@ -10,6 +10,7 @@ import { expressionLanguageSupport } from "src/language/expression-language-supp
 import { Tooltip } from "@mantine/core";
 import { IconInfoCircle } from "@tabler/icons-react";
 import { useFlow } from "src/providers/FlowProvider";
+import type { Resource } from "src-common/fhir-types";
 
 type Props = {
   value: string;
@@ -27,7 +28,7 @@ type Diagnostic = {
 export function ExpressionEditor({
   value,
   onChange,
-  onValidate,
+  //onValidate,
   extensions = [],
 }: Props) {
   const ref = useRef<HTMLDivElement | null>(null);
@@ -36,7 +37,7 @@ export function ExpressionEditor({
   const { getActiveNodesAndEdges } = useFlow();
   const nodes = getActiveNodesAndEdges()
     .nodes.filter((x) => x.type === "sourceNode")
-    .map((x) => [x.data.alias, x.data.type.url] as [string, URL]);
+    .map((x) => [x.data.alias, (x.data.type as Resource).url] as [string, URL]);
   const scopeEnv = new SimpleScopeEnvironment(Object.fromEntries(nodes));
   const [diagnostics, setDiagnostics] = useState<Diagnostic[]>([]);
 

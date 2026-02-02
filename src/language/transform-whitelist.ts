@@ -1,1 +1,1 @@
-export const transformWhitelist: string[] = ["append", "uuid"] as const;
+export const transformWhitelist: string[] = ["append", "uuid", "evaluate"] as const;
