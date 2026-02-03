@@ -26,7 +26,7 @@ export type NodeType =
 export function parameterToString(param: Parameter): string {
   switch (param.type) {
     case "transform":
-      return param.field ?? param.alias
+      return param.field ? param.field + "_" + param.alias.split("_")[1] : param.alias
     case "value":
       return `${_.isString(param.value) ? "\"" + param.value + "\"" : param.value}`;
   }

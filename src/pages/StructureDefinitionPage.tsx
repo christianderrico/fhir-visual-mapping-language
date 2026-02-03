@@ -20,6 +20,7 @@ import debounce from "lodash/debounce";
 import { useNavigate } from "react-router-dom";
 import { useFlow } from "src/providers/FlowProvider";
 import { ConceptMapViewer } from "./ConceptMapViewer";
+import { CodeSystemViewer } from "./CodeSystemViewer";
 
 const emptyState: DefinitionState = {
   definition: null,
@@ -49,7 +50,7 @@ const data = Object.fromEntries(
 
 export default function MappingDefinitionPage() {
   const [templateName, setTemplateName] = useState("");
-  const [outerTab, setOuterTab] = useState<"template" | "map">("template");
+  const [outerTab, setOuterTab] = useState<"template" | "map" | "system">("template");
   const [activeTab, setActiveTab] = useState<"source" | "target">("source");
 
   const [source, setSource] = useState<DefinitionState>(emptyState);
@@ -78,6 +79,7 @@ export default function MappingDefinitionPage() {
       <Tabs.List>
         <Tabs.Tab value="template">Define Template</Tabs.Tab>
         <Tabs.Tab value="map">Create Concept Map</Tabs.Tab>
+        <Tabs.Tab value="system">Create Code System</Tabs.Tab>
       </Tabs.List>
 
       <Tabs.Panel value="template">
@@ -168,6 +170,10 @@ export default function MappingDefinitionPage() {
 
       <Tabs.Panel value="map">
         <ConceptMapViewer/>
+      </Tabs.Panel>
+
+      <Tabs.Panel value="system">
+        <CodeSystemViewer/>
       </Tabs.Panel>
     </Tabs>
   );

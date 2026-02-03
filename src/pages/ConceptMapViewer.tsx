@@ -1,216 +1,252 @@
 import {
   Stack,
   Table,
-  Tabs,
   TextInput,
   Paper,
   SimpleGrid,
   Group,
   Button,
   Text,
-  Divider,
-  Box,
   Container,
 } from "@mantine/core";
 import { IconMinus, IconPlus } from "@tabler/icons-react";
 import { useState } from "react";
-import classes from "./Tabs.module.css";
 import { isUrl } from "src-common/strict-types";
 
+/* ============================
+   FHIR R4 Types
+============================ */
+
+interface ConceptTarget {
+  code: string;
+  display?: string;
+}
+
+interface ConceptElement {
+  sourceCode: string;
+  sourceDisplay?: string;
+  target?: ConceptTarget;
+}
+
+/* ============================
+   Component
+============================ */
+
 export function ConceptMapViewer() {
-  const checkDisabilityRows = (): boolean => {
-    const rs = rows.filter(([source, target]) => source != "" && target != "");
-    return rs.length !== rows.length || rs.length <= 0;
-  };
-
-  const [rows, setRows] = useState<[string, string][]>([]);
   const [uri, setUri] = useState("");
-  const [source, setSource] = useState("");
-  const [target, setTarget] = useState("");
-  const [activeTab, setActive] = useState<"internal" | "external">("internal");
+  const [sourceSystem, setSourceSystem] = useState("");
+  const [targetSystem, setTargetSystem] = useState("");
+  const [elements, setElements] = useState<ConceptElement[]>([]);
 
-  const addRow = () => setRows((prev) => [...prev, ["", ""]]);
-  const removeRow = () => setRows((prev) => prev.slice(0, -1));
+  /* ============================
+     Helpers
+  ============================ */
 
-  const resetState = () => {
-    setUri("");
-    setSource("");
-    setTarget("");
-    //setRows([])
+  const addElement = () => {
+    setElements((prev) => [
+      ...prev,
+      {
+        sourceCode: "",
+        target: {
+          code: "",
+        },
+      },
+    ]);
   };
+
+  const removeElement = () => {
+    setElements((prev) => prev.slice(0, -1));
+  };
+
+  const updateElement = (
+    index: number,
+    field: keyof ConceptElement,
+    value: any
+  ) => {
+    setElements((prev) =>
+      prev.map((el, i) => (i === index ? { ...el, [field]: value } : el))
+    );
+  };
+
+  const updateTarget = (
+    index: number,
+    field: keyof ConceptTarget,
+    value: any
+  ) => {
+    setElements((prev) =>
+      prev.map((el, i) =>
+        i === index && el.target
+          ? {
+              ...el,
+              target: { ...el.target, [field]: value },
+            }
+          : el
+      )
+    );
+  };
+
+  /* ============================
+     Validation
+  ============================ */
+
+  const isDisabled =
+    !isUrl(uri) ||
+    !isUrl(sourceSystem) ||
+    !isUrl(targetSystem) ||
+    elements.length === 0 ||
+    elements.some(
+      (el) =>
+        el.sourceCode.trim() === "" ||
+        !el.target?.code ||
+        el.target.code.trim() === ""
+    );
+
+  /* ============================
+     Create ConceptMap
+  ============================ */
+
+  const handleCreate = () => {
+    const conceptMap = {
+      resourceType: "ConceptMap",
+      url: uri,
+      status: "draft",
+      group: [
+        {
+          source: sourceSystem,
+          target: targetSystem,
+          element: elements.map((el) => ({
+            code: el.sourceCode,
+            display: el.sourceDisplay,
+            target: el.target
+              ? [
+                  {
+                    code: el.target.code,
+                    display: el.target.display,
+                    equivalence: "equivalent",
+                  },
+                ]
+              : [],
+          })),
+        },
+      ],
+    };
+
+    console.log("FHIR ConceptMap (R4):");
+    console.log(JSON.stringify(conceptMap, null, 2));
+  };
+
+  /* ============================
+     UI
+  ============================ */
 
   return (
     <Container size="xl" py="xl">
       <Stack gap="xl">
-        <Tabs defaultValue="internal">
-          <Tabs.List>
-            <Tabs.Tab
-              className={classes.tab}
-              value="internal"
-              onClick={(_) => (setActive("internal"), resetState())}
-            >
-              Internal
-            </Tabs.Tab>
-            <Tabs.Tab
-              className={classes.tab}
-              value="external"
-              onClick={(_) => (setActive("external"), resetState())}
-            >
-              External
-            </Tabs.Tab>
-          </Tabs.List>
+        <Paper p="lg" radius="md" withBorder>
+          <Stack gap="lg">
+            <Text fw={600} size="lg">
+              ConceptMap (FHIR R4)
+            </Text>
 
-          <Tabs.Panel value="internal" pt="lg">
-            <Paper p="lg" radius="md" withBorder>
-              <Stack gap="xl">
-                <TextInput
-                  value={uri}
-                  label="URI"
-                  withAsterisk
-                  onChange={(e) => setUri(e.target.value)}
-                />
+            <TextInput
+              label="ConceptMap URL"
+              withAsterisk
+              value={uri}
+              onChange={(e) => setUri(e.target.value)}
+              placeholder="http://example.org/fhir/ConceptMap/my-map"
+            />
 
-                <SimpleGrid cols={{ base: 1, sm: 2 }}>
-                  <TextInput
-                    value={source}
-                    label="Source"
-                    withAsterisk
-                    onChange={(e) => setSource(e.target.value)}
-                  />
-                  <TextInput
-                    value={target}
-                    label="Target"
-                    withAsterisk
-                    onChange={(e) => setTarget(e.target.value)}
-                  />
-                </SimpleGrid>
-
-                <Divider />
-
-                <Box>
-                  <Group justify="space-between" mb="xs">
-                    <Text fw={500}>Mappings</Text>
-                    <Group gap="xs">
-                      <Button size="xs" variant="transparent" onClick={addRow}>
-                        <IconPlus size={14} />
-                      </Button>
-                      <Button
-                        size="xs"
-                        variant="transparent"
-                        disabled={rows.length === 0}
-                        onClick={removeRow}
-                      >
-                        <IconMinus size={14} />
-                      </Button>
-                    </Group>
-                  </Group>
-
-                  <Table
-                    striped
-                    withTableBorder
-                    highlightOnHover
-                    verticalSpacing="xs"
-                  >
-                    <Table.Thead>
-                      <Table.Tr>
-                        <Table.Th>Source field</Table.Th>
-                        <Table.Th>Target field</Table.Th>
-                      </Table.Tr>
-                    </Table.Thead>
-
-                    <Table.Tbody>
-                      {rows.length === 0 ? (
-                        <Table.Tr>
-                          <Table.Td colSpan={2}>
-                            <Text c="dimmed" ta="center" size="sm">
-                              No mappings defined
-                            </Text>
-                          </Table.Td>
-                        </Table.Tr>
-                      ) : (
-                        rows.map(([source, target], index) => (
-                          <Table.Tr key={index}>
-                            <Table.Td>
-                              <TextInput
-                                size="xs"
-                                value={source}
-                                placeholder="Source field"
-                                onChange={(e) =>
-                                  setRows((prev) =>
-                                    prev.map((r, i) =>
-                                      i === index ? [e.target.value, r[1]] : r,
-                                    ),
-                                  )
-                                }
-                              />
-                            </Table.Td>
-                            <Table.Td>
-                              <TextInput
-                                size="xs"
-                                value={target}
-                                placeholder="Target field"
-                                onChange={(e) =>
-                                  setRows((prev) =>
-                                    prev.map((r, i) =>
-                                      i === index ? [r[0], e.target.value] : r,
-                                    ),
-                                  )
-                                }
-                              />
-                            </Table.Td>
-                          </Table.Tr>
-                        ))
-                      )}
-                    </Table.Tbody>
-                  </Table>
-                </Box>
-              </Stack>
-            </Paper>
-          </Tabs.Panel>
-
-          <Tabs.Panel value="external" pt="lg">
-            <Paper p="lg" radius="md" withBorder>
+            <SimpleGrid cols={{ base: 1, sm: 2 }}>
               <TextInput
-                value={uri}
-                label="URI"
+                label="Source CodeSystem"
                 withAsterisk
-                onChange={(e) => setUri(e.target.value)}
+                value={sourceSystem}
+                onChange={(e) => setSourceSystem(e.target.value)}
+                placeholder="http://hl7.org/fhir/sid/icd-10"
               />
-            </Paper>
-          </Tabs.Panel>
-        </Tabs>
-        <Group justify="space-between">
-          <Group />
-          <Button
-            size="md"
-            disabled={
-              (activeTab === "internal" &&
-                (checkDisabilityRows() ||
-                  !isUrl(uri) ||
-                  source === "" ||
-                  target === "")) ||
-              (activeTab === "external" && !isUrl(uri))
-            }
-            onClick={() => {
-              console.log({
-                url: uri,
-                group: [
-                  {
-                    source,
-                    target,
-                    mappings: rows.map((r) => ({
-                      s: r[0],
-                      t: r[1],
-                    })),
-                  },
-                ],
-              });
-            }}
-          >
-            Create
-          </Button>
-          <Group />
-        </Group>
+              <TextInput
+                label="Target CodeSystem"
+                withAsterisk
+                value={targetSystem}
+                onChange={(e) => setTargetSystem(e.target.value)}
+                placeholder="http://snomed.info/sct"
+              />
+            </SimpleGrid>
+
+            <Group justify="space-between">
+              <Text fw={500}>Concept Mappings</Text>
+              <Group gap="xs">
+                <Button size="xs" variant="light" onClick={addElement}>
+                  <IconPlus size={14} />
+                </Button>
+                <Button
+                  size="xs"
+                  variant="light"
+                  color="red"
+                  disabled={elements.length === 0}
+                  onClick={removeElement}
+                >
+                  <IconMinus size={14} />
+                </Button>
+              </Group>
+            </Group>
+
+            <Table striped withTableBorder>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>Source code</Table.Th>
+                  <Table.Th>Target code</Table.Th>
+                  <Table.Th>Target display</Table.Th>
+                </Table.Tr>
+              </Table.Thead>
+
+              <Table.Tbody>
+                {elements.map((el, index) => (
+                  <Table.Tr key={index}>
+                    <Table.Td>
+                      <TextInput
+                        size="xs"
+                        value={el.sourceCode}
+                        onChange={(e) =>
+                          updateElement(index, "sourceCode", e.target.value)
+                        }
+                        placeholder="Source code"
+                      />
+                    </Table.Td>
+
+                    <Table.Td>
+                      <TextInput
+                        size="xs"
+                        value={el.target?.code || ""}
+                        onChange={(e) =>
+                          updateTarget(index, "code", e.target.value)
+                        }
+                        placeholder="Target code"
+                      />
+                    </Table.Td>
+
+                    <Table.Td>
+                      <TextInput
+                        size="xs"
+                        value={el.target?.display || ""}
+                        onChange={(e) =>
+                          updateTarget(index, "display", e.target.value)
+                        }
+                        placeholder="Target display"
+                      />
+                    </Table.Td>
+                  </Table.Tr>
+                ))}
+              </Table.Tbody>
+            </Table>
+
+            <Group justify="flex-end">
+              <Button disabled={isDisabled} onClick={handleCreate}>
+                Create ConceptMap
+              </Button>
+            </Group>
+          </Stack>
+        </Paper>
       </Stack>
     </Container>
   );

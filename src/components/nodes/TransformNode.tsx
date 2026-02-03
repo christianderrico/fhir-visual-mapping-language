@@ -89,7 +89,7 @@ const ConstNode: FC<TransformNodeProps<"const">> = (props) => {
   );
 };
 
-const AppendEvaluateNode: FC<TransformNodeProps<"append" | "evaluate">> = (props) => {
+const VariableAndConstNode: FC<TransformNodeProps<"append" | "evaluate" | "translate">> = (props) => {
   const { id } = props;
   const { getActiveNodesAndEdges } = useFlow();
 
@@ -131,7 +131,7 @@ export const TransformNode: FC<TransformNodeProps> = (props) => {
   const { transformName, args } = props.data;
 
   if (transformName === "const") return <ConstNode {...(props as any)} />;
-  if (transformName === "append" || transformName === "evaluate") return <AppendEvaluateNode {...(props as any)} />;
+  if (transformName === "append" || transformName === "evaluate" || transformName === "translate") return <VariableAndConstNode {...(props as any)} />;
 
   return (
     <div

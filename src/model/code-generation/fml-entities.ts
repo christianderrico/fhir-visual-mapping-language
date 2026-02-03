@@ -106,15 +106,17 @@ export class FMLRule extends FMLBaseEntity {
     const target = this.formatTarget();
     switch (this.action) {
       case "copy":
-        return `"copy": ${this.leftParam.alias} -> ${target} = ${this.formatSource(this.rightParams[0])} "copy";`;
+        return `${this.leftParam.alias} -> ${target} = ${this.formatSource(this.rightParams[0])} "copy";`;
       case "reference":
-        return `"reference": ${this.leftParam.alias} -> ${target} = reference(${this.formatSource(this.rightParams[0])}) "reference";`;
+        return `${this.leftParam.alias} -> ${target} = reference(${this.formatSource(this.rightParams[0])}) "reference";`;
       case "create":
-        return `"create": ${this.leftParam.alias} -> ${target} = create("${(this.rightParams[0] as TransformParameter).resource}") as ${(this.rightParams[0] as TransformParameter).alias} then {`;
+        return `${this.leftParam.alias} -> ${target} = create("${(this.rightParams[0] as TransformParameter).resource}") as ${(this.rightParams[0] as TransformParameter).alias} then {`;
+      case "translate":
+        return `${this.leftParam.alias} -> ${target} = translate(${this.rightParams.map(parameterToString).join(",")}) "translate";`;
       case "append":
-        return `"append": ${this.leftParam.alias} -> ${target} = append(${this.rightParams.map(parameterToString).join(",")}) "append";`;
+        return `${this.leftParam.alias} -> ${target} = append(${this.rightParams.map(parameterToString).join(",")}) "append";`;
       case "evaluate":
-        return `"evaluate": ${this.leftParam.alias} -> ${target} = evaluate(${this.rightParams.map(parameterToString).join(",")}) "evaluate";`;
+        return `${this.leftParam.alias} -> ${target} = evaluate(${this.rightParams.map(parameterToString).join(",")}) "evaluate";`;
       case "uuid":
         return `${this.leftParam.alias} -> ${target} = ${(this.rightParams[0] as TransformParameter).alias}`;
       default:

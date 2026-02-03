@@ -107,7 +107,7 @@ function handleTransformNode(
     return handleUiidTransform(leftParam);
   }
 
-  if (transformName === "append" || transformName === "evaluate") {
+  if (transformName === "append" || transformName === "evaluate" || transformName === "translate") {
     return handleAppendTransform(sourceNode, leftParam, nodes, edges);
   }
 
@@ -438,9 +438,9 @@ export function printRuleTree(
     const chain = node ? getFather(node) : [];
     const mappedChain = chain.map((c, i) =>
       i === chain.length - 1
-        ? { ...c, add_alias: c.alias?.split("_")[1] }
-        : { ...c, add_alias: chain[i+1].alias?.split("_")[1] },
-    )
+        ? { ...c, add_alias: c.alias!.split("_")[1] }
+        : { ...c, add_alias: chain[i + 1].alias!.split("_")[1] },
+    );
 
     return mappedChain;
   };
@@ -448,7 +448,7 @@ export function printRuleTree(
   const getDependencies = (
     params: TransformParameter[],
     dependencies: Dependency[],
-  ): Partial<Dependency>[] => {
+  ): Partial<Dependency> & { add_alias: string }[] => {
     return params.flatMap((param) =>
       _.uniqBy(
         getChain({ alias: param.alias, field: param.field }, dependencies),
@@ -459,10 +459,14 @@ export function printRuleTree(
 
   const indent = (level: number) => "  ".repeat(level > 0 ? level : 0);
 
-  const step = (s: Partial<Dependency> & {add_alias: string}) =>
+  const step = (s: Partial<Dependency> & { add_alias: string }) =>
     `${s.alias}${s.field ? `.${s.field} as ${s.field}_${s.add_alias} ` : " "}`;
 
-  const open = (chain: Partial<Dependency> & {add_alias: 'string'} [], offset = 0, isGroup = false) =>
+  const open = (
+    chain: Partial<Dependency> & { add_alias: string }[],
+    offset = 0,
+    isGroup = false,
+  ) =>
     chain
       .map(
         (s, i) =>
@@ -483,8 +487,8 @@ export function printRuleTree(
       .join("\n");
 
   const buildBlock = (
-    sourceChain: Partial<Dependency>[],
-    targetChain: Partial<Dependency>[],
+    sourceChain: Partial<Dependency> & { add_alias: string }[],
+    targetChain: Partial<Dependency> & { add_alias: string }[],
     rule: string,
     isGroup: boolean,
     extraIndent = 0,
