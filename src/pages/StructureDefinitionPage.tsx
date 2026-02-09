@@ -87,7 +87,7 @@ export default function MappingDefinitionPage() {
           <Stack gap="xl">
             <Title order={2}>
               {templateName
-                ? `Name: ${templateName}`
+                ? `${templateName}.map`
                 : "Define template name"}
             </Title>
 

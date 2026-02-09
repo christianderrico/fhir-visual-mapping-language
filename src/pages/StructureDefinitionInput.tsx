@@ -197,7 +197,6 @@ export function StructureDefinitionInput({
             onChange={handleJsonChange}
             basicSetup={{
               lineNumbers: true,
-              //scrollPastEnd: true,
             }}
             height="300px"
           />

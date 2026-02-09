@@ -5,7 +5,7 @@
 Expression {
   TransformCall
 | Reference
-| Literal
+| FpExpression
 }
 
 /* ----------------- */
@@ -59,6 +59,31 @@ Literal {
 | Decimal
 | Integer
 | Boolean
+}
+
+/* ----------------- */
+/* FpExpression      */
+/* ----------------- */
+
+FpExpression {
+  FpTerm
+}
+
+FpTerm {
+  FpInvocation
+  | Literal
+  | FpExternalConstant
+  | '(' FpExpression ')'
+}
+
+FpExternalConstant {
+  '%' ( Identifier | String )
+}
+
+FpInvocation {
+  '$this'
+  | '$index'
+  | '$total'
 }
 
 /* ----------------- */

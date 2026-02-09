@@ -11,7 +11,7 @@ import {
   Title,
 } from "@mantine/core";
 import { Text } from "@mantine/core";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Disclosure } from "./EditorTabs.tsx";
 import { useTypeEnvironment } from "src/hooks/useTypeEnvironment.ts";
 import { useFlow } from "src/providers/FlowProvider.tsx";
@@ -75,7 +75,17 @@ export default function NewGroupModal({
   //   return _getResourcesFromOptions(produced);
   // }
 
-  //const debounceSetter = useCallback(_.debounce(setName, 500), []);
+  // Create a debounced version of setName using useMemo
+  const debouncedSetName = useMemo(
+    () => _.debounce((value: string) => setName(value), 300),
+    []
+  );
+
+  useEffect(() => {
+    return () => {
+      debouncedSetName.cancel();
+    };
+  }, [debouncedSetName]);
 
   const options2Res = Object.fromEntries(
     environment.getResources().map((res) => [res.name, res]),
@@ -104,10 +114,9 @@ export default function NewGroupModal({
         <Stack gap="md" style={{ flex: 1 }}>
           <TextInput
             label="Name"
-            value={name}
-            disabled={isEditableGroup && ctx.activeTab === "Main"}
+            defaultValue={name}
             placeholder="Enter group name"
-            onChange={(e) => setName(e.currentTarget.value)}
+            onChange={(e) => debouncedSetName(e.currentTarget.value)}
             required
             withAsterisk
           />
@@ -136,7 +145,7 @@ export default function NewGroupModal({
             withAsterisk
           />
 
-          <MultiSelect
+          {/* <MultiSelect
             label="Produced"
             placeholder="Select produced assets"
             data={options}
@@ -144,7 +153,7 @@ export default function NewGroupModal({
             onChange={setProduced}
             searchable
             clearable
-          />
+          /> */}
 
           <Button
             fullWidth

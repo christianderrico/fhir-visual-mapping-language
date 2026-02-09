@@ -104,10 +104,23 @@ function handleTransformNode(
   }
 
   if (transformName === "uuid") {
-    return handleUiidTransform(leftParam);
+    const minEdgeSorted = edges
+      .filter((e) => e.source === sourceNode.id)
+      .sort((a, b) => Number(a.target) - Number(b.target))[0];
+
+    return handleUiidTransform(leftParam, {
+      alias:
+        minEdgeSorted.target === leftParam.id
+          ? `uuid() as uuid_${leftParam.id}`
+          : `uuid_${minEdgeSorted.target}`,
+    } as TransformParameter);
   }
 
-  if (transformName === "append" || transformName === "evaluate" || transformName === "translate") {
+  if (
+    transformName === "append" ||
+    transformName === "evaluate" ||
+    transformName === "translate"
+  ) {
     return handleAppendTransform(sourceNode, leftParam, nodes, edges);
   }
 
@@ -129,13 +142,16 @@ function handleConstTransform(
   ]);
 }
 
-function handleUiidTransform(leftParam: TransformParameter): FMLRule | null {
+function handleUiidTransform(
+  leftParam: TransformParameter,
+  rightParam: TransformParameter,
+): FMLRule | null {
   return new FMLRule(
     `uiid_${leftParam.alias}`,
     "targetNode",
     "uuid",
     leftParam,
-    [{ alias: "uuid()" } as TransformParameter],
+    [rightParam],
   );
 }
 
@@ -485,7 +501,7 @@ export function printRuleTree(
       .split("\n")
       .map((l: string) => indent(level) + l)
       .join("\n");
-
+  
   const buildBlock = (
     sourceChain: Partial<Dependency> & { add_alias: string }[],
     targetChain: Partial<Dependency> & { add_alias: string }[],
@@ -552,7 +568,7 @@ export function printRuleTree(
   const isCreateRule = isCreate(node);
 
   if (shouldPrint) {
-    const block = createBlock(node.toString());
+    const block = createBlock(variables.sources[0].alias + " -> " + node.toString());
     lines.push(block!);
   }
 

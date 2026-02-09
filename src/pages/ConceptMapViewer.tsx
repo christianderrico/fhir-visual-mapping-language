@@ -38,11 +38,12 @@ export function ConceptMapViewer() {
   const [targetSystem, setTargetSystem] = useState("");
   const [elements, setElements] = useState<ConceptElement[]>([]);
 
-  /* ============================
-     Helpers
-  ============================ */
-
   const addElement = () => {
+    console.log(uri)
+    console.log(isUrl(uri))
+    console.log(sourceSystem)
+    console.log(targetSystem)
+    console.log("ELEMENTS: ", elements)
     setElements((prev) => [
       ...prev,
       {
@@ -85,14 +86,10 @@ export function ConceptMapViewer() {
     );
   };
 
-  /* ============================
-     Validation
-  ============================ */
-
   const isDisabled =
-    !isUrl(uri) ||
-    !isUrl(sourceSystem) ||
-    !isUrl(targetSystem) ||
+    uri.trim() === "" ||
+    sourceSystem.trim() === "" ||
+    targetSystem.trim() === "" ||
     elements.length === 0 ||
     elements.some(
       (el) =>
@@ -100,10 +97,6 @@ export function ConceptMapViewer() {
         !el.target?.code ||
         el.target.code.trim() === ""
     );
-
-  /* ============================
-     Create ConceptMap
-  ============================ */
 
   const handleCreate = () => {
     const conceptMap = {
@@ -134,10 +127,6 @@ export function ConceptMapViewer() {
     console.log("FHIR ConceptMap (R4):");
     console.log(JSON.stringify(conceptMap, null, 2));
   };
-
-  /* ============================
-     UI
-  ============================ */
 
   return (
     <Container size="xl" py="xl">

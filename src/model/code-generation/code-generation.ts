@@ -1,7 +1,6 @@
 import { type Edge, type Node } from "@xyflow/react";
 import { FMLGroupNode, FMLNode, FMLRule } from "./fml-entities";
 import {
-  debugTree,
   findNode,
   isGroupNode,
   isTransformParam,
@@ -41,7 +40,8 @@ function getAllGroupsOrdered(
 
 export function generateTemplate(props: GraphProps) {
   const { templateName, groupNodesByTab, nodes, edges } = props;
-  const ordered_groups = getAllGroupsOrdered(groupNodesByTab);
+  const groupKey = Object.keys(groupNodesByTab)[0]
+  const ordered_groups = getAllGroupsOrdered(groupNodesByTab, groupKey);
 
   const getGroupNodes =
     (type: "sourceNode" | "targetNode") =>
@@ -231,7 +231,7 @@ function generateGroup(
   const sourceTree = createTreeVariables(mockFMLSource);
   const targetTree = createTreeVariables(mockFMLTarget);
 
-  debugTree(mockFMLTarget);
+  //debugTree(mockFMLTarget);
   //debugTree(mockFMLSource);
 
   let lines = [];

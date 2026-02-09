@@ -56,7 +56,7 @@ function useProvidePrompt() {
         title: "Select implementation",
       }),
     askExpression: (title: string, placeholder?: string) =>
-      ask<{ tree: Tree, value: string }>({ type: "expression", title, placeholder }),
+      ask<{ tree: Tree, value: string, condition?: string }>({ type: "expression", title, placeholder }),
 
     modalProps: {
       opened: !!state.prompt,

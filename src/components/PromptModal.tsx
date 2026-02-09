@@ -56,6 +56,7 @@ export function PromptModal({
   });
 
   const [option, setOption] = useState("");
+  const [condition, setCondition] = useState("");
 
   const onModalClose = onClose;
   const onModalSubmit = useCallback(
@@ -66,11 +67,12 @@ export function PromptModal({
           tree: parser.parse(value),
           value,
           option,
+          condition
         });
       }
       onSubmit(value);
     },
-    [onSubmit, value, option],
+    [onSubmit, value, option, condition],
   );
 
   const renderSelectOption: SelectProps["renderOption"] = ({ option }) => (
@@ -135,6 +137,8 @@ export function PromptModal({
         )}
         {prompt?.type === "select" ||
           (prompt?.type === "alternatives" && (
+            <Stack gap={4}>
+            <Text fw={200}>Select option</Text>
             <Select
               data={prompt.options}
               value={prompt.type === "alternatives" ? option : value}
@@ -152,16 +156,36 @@ export function PromptModal({
                   }
               }}
             />
+            </Stack>
           ))}
         {(prompt?.type === "expression" || prompt?.type === "alternatives") && (
           <Box h="500px">
-            <ExpressionEditor
-              value={prompt.type === "alternatives" ? "" : value}
-              onChange={(e) => {
-                setValue(e);
-                setOption("");
-              }}
-            />
+            <Stack gap="md">
+              {/* Editor principale */}
+              <Stack gap={4}>
+                <Text fw={200}>Expression</Text>
+                <ExpressionEditor
+                  value={prompt.type === "alternatives" ? "" : value}
+                  onChange={(e) => {
+                    setValue(e);
+                    setOption("");
+                  }}
+                />
+              </Stack>
+
+              {/* Editor condizionale */}
+              {prompt?.type === "expression" && (
+                <Stack gap={4}>
+                  <Text fw={200}>Condition</Text>
+                  <ExpressionEditor
+                    value={condition}
+                    onChange={(e) => {
+                      setCondition(e);
+                    }}
+                  />
+                </Stack>
+              )}
+            </Stack>
           </Box>
         )}
         <Group gap={rem(16)} justify="end">

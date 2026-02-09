@@ -92,7 +92,6 @@ export const SourceNode: FC<SourceNodeProps> = (props) => {
               component="span"
               size="xs"
               color="dimmed"
-              contentEditable
               suppressContentEditableWarning={true}
             >
               {" "}

@@ -129,9 +129,11 @@ export const FhirMappingFlow: FC<{
         return;
       }
       if (fromNode.type === "targetNode" && field.kind === "primitive") {
-        const { tree, value } = await askExpression(
+        const { tree, value, condition } = await askExpression(
           "Insert value for this field",
         );
+
+        console.log(condition)
 
         evaluate(tree, value, {
           data: {
@@ -291,10 +293,12 @@ export const FhirMappingFlow: FC<{
       }
 
       if (fromNode.type === "sourceNode" && toNode?.type === "targetNode") {
-        const { tree, value } = await askExpression(
+        const { tree, value, condition } = await askExpression(
           "Copy value",
           fromNode?.data.alias + (fromHandle?.id ? "." + fromHandle?.id : ""),
         );
+
+        console.log(condition)
 
         evaluate(tree, value, {
           data: {
@@ -308,10 +312,12 @@ export const FhirMappingFlow: FC<{
       }
 
       if (fromNode.type === "targetNode" && toNode?.type === "sourceNode") {
-        const { tree, value } = await askExpression(
+        const { tree, value, condition } = await askExpression(
           "Copy value",
           toNode?.data.alias + (toHandle?.id ? "." + toHandle?.id : ""),
         );
+
+        console.log(condition)
 
         evaluate(tree, value, {
           data: {

@@ -12,7 +12,7 @@ import {
 
 const transformFunctions = mapTransformValueSet.include[0].concept.filter(({code}) => transformWhitelist.includes(code)).map(
   ({ code, definition }) => ({
-    label: code,
+    label: code + "()",
     type: "function",
     info: definition,
   }),

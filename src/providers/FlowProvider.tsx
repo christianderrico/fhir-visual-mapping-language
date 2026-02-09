@@ -268,8 +268,12 @@ function useProvideFlow() {
 
     setNodes((prev) =>
       prev.concat([
-        ...(source != null ? [createSourceNode(source, group, { x: 0, y: 0 })] : []),
-        ...(target != null ? [createTargetNode(target, group, { x: 700, y: 0 })] : []),
+        ...(source != null
+          ? [createSourceNode(source, group, { x: 0, y: 0 })]
+          : []),
+        ...(target != null
+          ? [createTargetNode(target, group, { x: 700, y: 0 })]
+          : []),
       ]),
     );
 
@@ -319,11 +323,22 @@ function useProvideFlow() {
       const nextTabs = new Set(prevTabs);
       nextTabs.delete(prev);
       nextTabs.add(next);
-      setNodes((prevNodes) =>
-        prevNodes.filter((n) => n.data.groupName != prev),
-      );
-      addNodes(next, sources, "sourceNode");
-      addNodes(next, targets, "targetNode");
+
+      setNodes((previous) => {
+        const cleaned = previous.filter(
+          (n) => n.data.groupName !== prev && n.data.groupName !== next,
+        );
+
+        return [
+          ...cleaned,
+          ...sources.map((r, i) =>
+            createSourceNode(r, next, { x: 0, y: i * 200 }),
+          ),
+          ...targets.map((r, i) =>
+            createTargetNode(r, next, { x: 0, y: i * 200 }),
+          ),
+        ];
+      });
       return nextTabs;
     });
   }

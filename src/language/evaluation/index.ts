@@ -188,3 +188,7 @@ export function evaluate(
       break;
   }
 }
+
+// export function evaluateCondition(fhirPathExpr: string, ctx: EvaluationContext){
+  
+// }
