@@ -25,7 +25,7 @@ export function LoginPage(props: any) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if(email === "DeepAlma" && password === "SuperPoppata")
-        navigate("/definition")
+        navigate("/fhir-visual-mapping-language/definition")
   };
 
   return (

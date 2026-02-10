@@ -157,7 +157,7 @@ export default function MappingDefinitionPage() {
                     target.definition!,
                     templateName
                   );
-                  navigate("/editor");
+                  navigate("/fhir-visual-mapping-language/editor");
                 }}
               >
                 Create
