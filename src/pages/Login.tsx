@@ -1,6 +1,5 @@
 import { useState } from "react";
 import {
-  Anchor,
   Button,
   Checkbox,
   Container,
@@ -16,7 +15,7 @@ import { upperFirst, useToggle } from "@mantine/hooks";
 import { useNavigate } from "react-router-dom";
 
 export function LoginPage(props: any) {
-  const [type, toggle] = useToggle(["login", "register"]);
+  const [type] = useToggle(["login", "register"]);
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
@@ -36,7 +35,7 @@ export function LoginPage(props: any) {
           {upperFirst(type)}
         </Text>
 
-        <Divider label="Continue with email" labelPosition="center" my="lg" />
+        <Divider label="Continue with credentials" labelPosition="center" my="lg" />
 
         <form onSubmit={handleSubmit}>
           <Stack>

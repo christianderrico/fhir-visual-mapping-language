@@ -4,6 +4,7 @@ import tsconfigPaths from 'vite-tsconfig-paths';
 
 // https://vite.dev/config/
 export default defineConfig({
+  base:'/fhir-visual-mapping-language/',
   plugins: [
     react(),
     tsconfigPaths(),

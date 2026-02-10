@@ -49,9 +49,9 @@ function App() {
             <ReactFlowProvider>
               <FlowProvider>
                 <Routes>
-                  <Route path="/" element={<LoginPage />} />
-                  <Route path="/definition" element={<StructureDefinitionPage />} />
-                  <Route path="/editor" element={<Editor />} />
+                  <Route path="/fhir-visual-mapping-language" element={<LoginPage />} />
+                  <Route path="/fhir-visual-mapping-language/definition" element={<StructureDefinitionPage />} />
+                  <Route path="/fhir-visual-mapping-language/editor" element={<Editor />} />
                 </Routes>
               </FlowProvider>
             </ReactFlowProvider>

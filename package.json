@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "homepage": "https://lippo97.github.io/visual-fml",
+  "homepage": "https://christianderrico.github.io/fhir-visual-mapping-language",
   "scripts": {
     "dev": "npm run build && vite",
     "build": "npm run build:parser && tsc -b && vite build",
@@ -16,7 +16,7 @@
     "cleanw": "rmdir /s /q src-generated",
     "test": "vitest run \"test\"",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d build"
+    "deploy": "gh-pages -d dist"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.0",
