@@ -14,6 +14,7 @@ import type { URL } from "src-common/strict-types";
 import StructureDefinitionPage from "./pages/StructureDefinitionPage";
 import { FlowProvider } from "./providers/FlowProvider";
 import { ReactFlowProvider } from "@xyflow/react";
+import { LoginPage } from "./pages/Login";
 
 const modules = import.meta.glob("../src-generated/metadata/*.json", {
   eager: true,
@@ -48,7 +49,8 @@ function App() {
             <ReactFlowProvider>
               <FlowProvider>
                 <Routes>
-                  <Route path="/" element={<StructureDefinitionPage />} />
+                  <Route path="/" element={<LoginPage />} />
+                  <Route path="/definition" element={<StructureDefinitionPage />} />
                   <Route path="/editor" element={<Editor />} />
                 </Routes>
               </FlowProvider>
