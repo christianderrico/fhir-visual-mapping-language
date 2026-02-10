@@ -26,6 +26,7 @@ export function LoginPage(props: any) {
     e.preventDefault();
     if(email === "DeepAlma" && password === "SuperPoppata")
         navigate("/fhir-visual-mapping-language/definition")
+    console.log("CIAO")
   };
 
   return (
