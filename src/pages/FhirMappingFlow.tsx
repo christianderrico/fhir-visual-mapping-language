@@ -32,6 +32,7 @@ import { GroupNode } from "src/components/nodes/GroupNode";
 //import { dumpTree } from "src/language/util";
 import { evaluate } from "src/language/evaluation";
 import { makeId } from "src/utils/field-based-id";
+import { CustomEdge } from "src/components/edges/CustomEdge";
 //import { toPlainObject } from "lodash";
 
 const nodeTypes = {
@@ -40,6 +41,10 @@ const nodeTypes = {
   transformNode: TransformNode,
   groupNode: GroupNode,
 };
+
+const edgeTypes = {
+  customEdge: CustomEdge
+}
 
 export const FhirMappingFlow: FC<{
   nodes: Node[];
@@ -122,6 +127,7 @@ export const FhirMappingFlow: FC<{
 
         ctx.addEdge({
           id: edgeId,
+          type: 'customEdge',
           source: nodeId,
           target: fromNode.id,
           targetHandle: fromHandle.id,
@@ -133,7 +139,7 @@ export const FhirMappingFlow: FC<{
           "Insert value for this field",
         );
 
-        console.log(condition)
+        console.log("LA CONDIZIONE: ", condition);
 
         evaluate(tree, value, {
           data: {
@@ -180,6 +186,7 @@ export const FhirMappingFlow: FC<{
 
           const edgeId = makeId(fromNode.id, fromHandle.id);
           ctx.addEdge({
+            type: "customEdge",
             id: edgeId,
             source: nodeId,
             target: fromNode.id,
@@ -209,6 +216,7 @@ export const FhirMappingFlow: FC<{
         const edgeId = makeId(fromNode.id, fromHandle.id);
         ctx.addEdge({
           id: edgeId,
+          type: "customEdge",
           source: nodeId,
           target: fromNode.id,
           targetHandle: fromHandle.id,
@@ -239,14 +247,16 @@ export const FhirMappingFlow: FC<{
           });
         } else if (option) {
           const nodeId = ctx.idGen.current.getId();
-          const type = field.value.find(fValue => fValue.kind === "complex" && fValue.value === option)
+          const type = field.value.find(
+            (fValue) => fValue.kind === "complex" && fValue.value === option,
+          );
           ctx.addNode({
             id: nodeId,
             type: "targetNode",
             position: xyPos,
             data: {
               alias: asVariableName(option) + "_" + nodeId,
-              type: {...type, name: option},
+              type: { ...type, name: option },
               inner: true,
               expand: true,
               groupName: ctx.activeTab,
@@ -256,6 +266,7 @@ export const FhirMappingFlow: FC<{
           const edgeId = makeId(fromNode.id, fromHandle.id);
           ctx.addEdge({
             id: edgeId,
+            type: 'customEdge',
             source: nodeId,
             target: fromNode.id,
             targetHandle: fromHandle.id,
@@ -284,6 +295,7 @@ export const FhirMappingFlow: FC<{
       ) {
         ctx.addEdge({
           id: toNode?.id + "." + toHandle?.id,
+          type: 'customEdge',
           source: fromNode.id,
           sourceHandle: fromHandle?.id,
           target: toNode?.id ?? "",
@@ -298,7 +310,8 @@ export const FhirMappingFlow: FC<{
           fromNode?.data.alias + (fromHandle?.id ? "." + fromHandle?.id : ""),
         );
 
-        console.log(condition)
+        console.log("THE CONDITION: ", condition);
+        //console.log(connectionState)
 
         evaluate(tree, value, {
           data: {
@@ -308,6 +321,17 @@ export const FhirMappingFlow: FC<{
           },
           flow: ctx,
         });
+        
+        ctx.addConditionToEdge(
+          {
+            id: "",
+            source: fromNode.id,
+            sourceHandle: fromHandle?.id,
+            target: toNode?.id,
+            targetHandle: toHandle?.id,
+          },
+          condition,
+        );
         return;
       }
 
@@ -317,7 +341,7 @@ export const FhirMappingFlow: FC<{
           toNode?.data.alias + (toHandle?.id ? "." + toHandle?.id : ""),
         );
 
-        console.log(condition)
+        console.log("EL CONDICIO: ", condition);
 
         evaluate(tree, value, {
           data: {
@@ -340,6 +364,7 @@ export const FhirMappingFlow: FC<{
         //const res = fromNode.data.type as NonPrimitiveResource;
         ctx.addEdge({
           id: toNode.id,
+          type: 'customEdge',
           source: fromNode.id,
           sourceHandle: fromHandle.id,
           target: toNode.id,
@@ -358,6 +383,7 @@ export const FhirMappingFlow: FC<{
         //const res = fromNode.data.type as NonPrimitiveResource;
         ctx.addEdge({
           id: makeId(toNode.id, toHandle?.id),
+          type: 'customEdge',
           source: toNode.id,
           sourceHandle: toHandle?.id,
           target: fromNode.id,
@@ -405,6 +431,7 @@ export const FhirMappingFlow: FC<{
         onDragOver={(e) => e.preventDefault()}
         onEdgesChange={onEdgesChange}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         onConnect={onConnect}
         onConnectEnd={onConnectEnd}
         onInit={onInit}

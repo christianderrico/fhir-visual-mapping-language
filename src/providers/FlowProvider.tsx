@@ -176,9 +176,29 @@ function useProvideFlow() {
       );
   }
 
-  function addEdge(edge: Edge) {
+  function addConditionToEdge(edgeToFind: Edge, condition?: string) {
     setEdges((prev) =>
-      prev.filter((x) => x.id !== edge.id).concat({ ...edge, animated: true }),
+      prev.map((edge) =>
+        edge.source === edgeToFind.source &&
+        edge.sourceHandle === edgeToFind.sourceHandle &&
+        edge.target === edgeToFind.target &&
+        edge.targetHandle === edgeToFind.targetHandle
+          ? {
+              ...edge,
+              data: {
+                ...edge.data,
+                condition,
+              },
+            }
+          : edge,
+      ),
+    );
+  }
+
+  function addEdge(edge: Edge) {
+    console.log("EDGE DA AGGIUNGERE ", edge)
+    setEdges((prev) =>
+      prev.filter((x) => x.id !== edge.id).concat({ ...edge, data: {}, type: "customEdge", animated: true }),
     );
   }
 
@@ -411,6 +431,7 @@ function useProvideFlow() {
     updateTab,
     addNode,
     addEdge,
+    addConditionToEdge,
     addNodes,
     getGroupNodes,
     setActiveTab,
