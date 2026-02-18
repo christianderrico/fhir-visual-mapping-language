@@ -18,6 +18,8 @@ export function toFMLNodeType(type: string): NodeType {
       return "groupNode";
     case "fakeNode":
       return 'fakeNode';
+    case 'transformNode':
+      return 'transformNode';
     default:
       return "sourceTargetNode";
   }
@@ -52,8 +54,8 @@ export function transformParamFromNode(
     resource: node.data.type
       ? fieldExtractType(node.data.type as Field)
       : field?.replace("source-", "").replace("target-", "") ?? "",
-    alias: (node.data.alias as string),
-    field,
+    alias: ((node.data.alias ?? field) as string),
+    field: field?.includes("_") ? field.split("_")[0] : field,
   };
 }
 
@@ -65,6 +67,10 @@ export function isGroupNode(node: FMLBaseEntity): node is FMLGroupNode {
   return node.type === "groupNode"
 }
 
+export function isTransformNode(node: FMLBaseEntity): node is FMLGroupNode {
+  return node.type === "transformNode"
+}
+
 export function isFakeNode(node: FMLBaseEntity): node is FMLGroupNode {
   return node.type === "fakeNode"
 }
@@ -73,8 +79,8 @@ export function isNode(node: FMLBaseEntity): node is FMLNode {
   return "url" in node;
 }
 
-export function valueParam(value: string | number): ValueParameter {
-  return { type: "value", value };
+export function valueParam(id: string, value: string | number): ValueParameter {
+  return { id, type: "value", value };
 }
 
 export function isTransformParam(p: Parameter): p is TransformParameter {

@@ -198,7 +198,7 @@ function useProvideFlow() {
   function addEdge(edge: Edge) {
     console.log("EDGE DA AGGIUNGERE ", edge)
     setEdges((prev) =>
-      prev.filter((x) => x.id !== edge.id).concat({ ...edge, data: {}, type: "customEdge", animated: true }),
+      prev.filter((x) => x.id !== edge.id).concat({ ...edge, data: {...edge.data ?? {}}, type: "customEdge", animated: true }),
     );
   }
 

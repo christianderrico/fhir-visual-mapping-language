@@ -10,6 +10,7 @@ export type TransformParameter = {
 };
 
 export type ValueParameter = {
+  id: string,
   type: "value";
   value: string | number;
 };
@@ -21,6 +22,7 @@ export type NodeType =
   | "targetNode"
   | "groupNode"
   | "fakeNode"
+  | "transformNode"
   | "sourceTargetNode";
 
 export function parameterToString(param: Parameter): string {

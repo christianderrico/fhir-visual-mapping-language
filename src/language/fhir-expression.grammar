@@ -1,28 +1,26 @@
-@top Program { Expression }
+@top Program {
+  Expression
+}
 
-@skip { whitespace }
+/* ----------------- */
+/* Expressions       */
+/* ----------------- */
 
 Expression {
-  TransformCall
+  FpExpression
 | Reference
-| Literal
 }
 
 /* ----------------- */
-/* Transform calls   */
+/* Calls             */
 /* ----------------- */
 
-TransformCall {
-  Identifier "(" TransformArgs? ")"
+Call {
+  Identifier "(" ArgList? ")"
 }
 
-TransformArgs {
-  TransformArg (", " TransformArg)*
-}
-
-TransformArg {
-  Reference
-| Literal
+ArgList {
+  Expression ("," Expression)*
 }
 
 /* ----------------- */
@@ -43,11 +41,7 @@ FieldAccess {
 }
 
 PropertyAccess {
-  "." Property
-}
-
-Property {
-  Identifier
+  "." Identifier
 }
 
 /* ----------------- */
@@ -59,6 +53,116 @@ Literal {
 | Decimal
 | Integer
 | Boolean
+}
+
+/* ----------------- */
+/* FP expressions    */
+/* ----------------- */
+
+/*
+ * Precedence (highest → lowest):
+ *
+ *  1. Postfix        .  []
+ *  2. Prefix         +  -
+ *  3. Multiplicative * / div mod
+ *  4. Additive       + - &
+ *  5. Union          |
+ *  6. Relational     < <= > >=
+ *  7. Equality       = != ~ !~
+ *  8. Membership     in contains
+ *  9. Logical AND    and
+ * 10. Logical OR     or xor
+ * 11. Implication    implies
+ */
+
+FpExpression {
+  FpImplies
+}
+
+/* implies (right associative) */
+FpImplies {
+  FpOr
+| FpOr "implies" FpImplies
+}
+
+/* or / xor */
+FpOr {
+  FpAnd
+| FpAnd ("or" | "xor") FpOr
+}
+
+/* and */
+FpAnd {
+  FpIn
+| FpIn "and" FpAnd
+}
+
+/* in / contains */
+FpIn {
+  FpEquality
+| FpEquality ("in" | "contains") FpIn
+}
+
+/* equality */
+FpEquality {
+  FpRelational
+| FpRelational ("=" | "!=" | "~" | "!~") FpEquality
+}
+
+/* relational */
+FpRelational {
+  FpUnion
+| FpUnion ("<" | "<=" | ">" | ">=") FpRelational
+}
+
+/* union */
+FpUnion {
+  FpAdditive
+| FpAdditive "|" FpUnion
+}
+
+/* additive */
+FpAdditive {
+  FpMultiplicative
+| FpMultiplicative ("+" | "-" | "&") FpAdditive
+}
+
+/* multiplicative */
+FpMultiplicative {
+  FpPrefix
+| FpPrefix ("*" | "/" | "div" | "mod") FpMultiplicative
+}
+
+/* prefix */
+FpPrefix {
+  ("+" | "-") FpPrefix
+| FpPostfix
+}
+
+/* postfix */
+FpPostfix {
+  FpPrimary
+| FpPostfix "." Identifier
+| FpPostfix "[" FpExpression "]"
+}
+
+/* atomic */
+FpPrimary {
+  Literal
+| ExternalConstant
+| Call
+| "$this"
+| "$index"
+| "$total"
+| "(" FpExpression ")"
+}
+
+/* ----------------- */
+/* External constants*/
+/* ----------------- */
+
+ExternalConstant {
+  "%" (Identifier | String)
 }
 
 /* ----------------- */
@@ -82,6 +186,9 @@ Literal {
   }
 
   whitespace { $[ \t\n\r]+ }
+
 }
+
+@skip { whitespace }
 
 Boolean { @specialize<Identifier, "true" | "false"> }

@@ -88,6 +88,7 @@ export const FhirMappingFlow: FC<{
         "changedTouches" in event ? event.changedTouches[0] : event;
       const { fromHandle } = connectionState;
       const fromNode = connectionState.fromNode!;
+      //const sourceNode = connectionState.toNode;
       const xyPos = screenToFlowPosition({ x: clientX, y: clientY });
 
       if (fromHandle === null) return;
@@ -106,7 +107,7 @@ export const FhirMappingFlow: FC<{
         fromNode.type === "targetNode" &&
         isOptionField(field) &&
         field.valueSet !== undefined
-      ) {
+      ) { //const with options
         const candidates = typeEnv.getOptions(field.valueSet.url);
         const chosen = await askOption(Object.values(candidates));
 
@@ -139,13 +140,12 @@ export const FhirMappingFlow: FC<{
           "Insert value for this field",
         );
 
-        console.log("LA CONDIZIONE: ", condition);
-
         evaluate(tree, value, {
           data: {
             xyPos,
             target: fromNode!.id,
             targetHandle: fromHandle!.id!,
+            condition: condition
           },
           flow: ctx,
         });
@@ -167,7 +167,6 @@ export const FhirMappingFlow: FC<{
         const choice = await askImplementation(candidates);
         if (choice) {
           const choiceType = getNonPrimitive(choice);
-          console.log("AGGIUNGI NODO");
 
           const nodeId = ctx.idGen.current.getId();
           ctx.addNode({
@@ -289,6 +288,8 @@ export const FhirMappingFlow: FC<{
       if (fromNode === null) return;
       if (!isValid) return onDroppedEdge(event, connectionState);
 
+      console.log("STOPALOAD")
+
       if (
         fromNode.type === "transformNode" ||
         toNode?.type === "transformNode"
@@ -311,13 +312,13 @@ export const FhirMappingFlow: FC<{
         );
 
         console.log("THE CONDITION: ", condition);
-        //console.log(connectionState)
 
         evaluate(tree, value, {
           data: {
             xyPos,
             target: toNode.id,
             targetHandle: toHandle?.id!,
+            condition: condition
           },
           flow: ctx,
         });
@@ -348,6 +349,7 @@ export const FhirMappingFlow: FC<{
             xyPos,
             target: fromNode.id,
             targetHandle: fromHandle?.id!,
+            condition: condition
           },
           flow: ctx,
         });

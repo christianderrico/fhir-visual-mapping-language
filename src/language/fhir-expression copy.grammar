@@ -67,6 +67,7 @@ Literal {
 
 FpExpression {
   FpTerm
+  | FpExpression '.' FpInvocation
 }
 
 FpTerm {
