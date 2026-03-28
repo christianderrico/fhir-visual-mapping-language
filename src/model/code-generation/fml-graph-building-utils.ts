@@ -6,6 +6,7 @@ import {
   isGroupNode,
   isNode,
   isRule,
+  isTransformNode,
   isTransformParam,
   toFMLNodeType,
   transformParamFromNode,
@@ -16,7 +17,12 @@ import type {
   Argument,
   TransformName,
 } from "src/components/nodes/TransformNode";
-import type { NodeType, Parameter, TransformParameter } from "./fml-types";
+import type {
+  NodeType,
+  Parameter,
+  TransformParameter,
+  ValueParameter,
+} from "./fml-types";
 import { isResource } from "src-common/fhir-types";
 import { v4 as uuid } from "uuid";
 
@@ -26,7 +32,9 @@ export function buildRules(
 ): (FMLRule | FMLGroupNode | null | undefined)[] {
   const groups = new Map<string, FMLGroupNode>();
   return edges.map((edge) => {
-    const { source, target, sourceHandle, targetHandle } = edge;
+    const { source, target, sourceHandle, targetHandle, data } = edge;
+
+    const condition = data?.condition as string;
 
     const targetNode = findNode(nodes, target);
     const sourceNode = findNode(nodes, source);
@@ -40,11 +48,15 @@ export function buildRules(
         leftParam,
         nodes,
         edges,
-      );
+      )?.setCondition(condition);
     }
 
     if (sourceNode.type === "targetNode" && targetNode.type === "targetNode") {
-      return handleCreateOperation(sourceNode, targetNode, leftParam);
+      return handleCreateOperation(
+        sourceNode,
+        targetNode,
+        leftParam,
+      ).setCondition(condition);
     }
 
     if (sourceNode.type === "sourceNode" && targetNode.type === "targetNode") {
@@ -60,7 +72,7 @@ export function buildRules(
         leftParam,
         isReferenceRule,
         sourceHandle!,
-      );
+      ).setCondition(condition);
     }
 
     if (sourceNode.type === "groupNode" && targetNode.type === "targetNode") {
@@ -108,12 +120,22 @@ function handleTransformNode(
       .filter((e) => e.source === sourceNode.id)
       .sort((a, b) => Number(a.target) - Number(b.target))[0];
 
-    return handleUiidTransform(leftParam, {
-      alias:
-        minEdgeSorted.target === leftParam.id
-          ? `uuid() as uuid_${leftParam.id}`
-          : `uuid_${minEdgeSorted.target}`,
-    } as TransformParameter);
+    const isReference =
+      edges.filter(
+        (e) => e.source === sourceNode.id || e.target === sourceNode.id,
+      ).length >= 2;
+
+    return handleUiidTransform(
+      leftParam,
+      {
+        id: sourceNode.id,
+        alias:
+          minEdgeSorted.target === leftParam.id
+            ? `uuid() as uuid_${leftParam.id}`
+            : `uuid_${minEdgeSorted.target}`,
+      } as TransformParameter,
+      isReference,
+    );
   }
 
   if (
@@ -121,7 +143,7 @@ function handleTransformNode(
     transformName === "evaluate" ||
     transformName === "translate"
   ) {
-    return handleAppendTransform(sourceNode, leftParam, nodes, edges);
+    return handleTransformFunction(sourceNode, leftParam, nodes, edges);
   }
 
   return null;
@@ -138,37 +160,42 @@ function handleConstTransform(
 
   const value = extractValueFromNode(sourceNode);
   return new FMLRule(`const_${uuid()}`, "targetNode", "copy", leftParam, [
-    valueParam(value),
+    valueParam(targetNode.id, value),
   ]);
 }
 
 function handleUiidTransform(
   leftParam: TransformParameter,
   rightParam: TransformParameter,
+  isReference: boolean,
 ): FMLRule | null {
-  return new FMLRule(
+  const r = new FMLRule(
     `uiid_${leftParam.alias}`,
     "targetNode",
     "uuid",
     leftParam,
     [rightParam],
+    isReference,
   );
+
+  return r;
 }
 
-function handleAppendTransform(
+function handleTransformFunction(
   sourceNode: Node,
   leftParam: TransformParameter,
   nodes: Node[],
   edges: Edge[],
 ): FMLRule {
   const action = sourceNode.data.transformName;
+
   const params = getConnectedParamsForTransform(sourceNode.id, nodes, edges);
   const isSourceTarget =
     params.filter(isTransformParam).filter((p) => p.originType === "sourceNode")
       .length > 0;
 
   return new FMLRule(
-    `${action}_${leftParam.id}`,
+    `${action}_${leftParam.id}_${sourceNode.id}`,
     isSourceTarget ? "sourceTargetNode" : "targetNode",
     action as TransformName,
     leftParam,
@@ -273,11 +300,14 @@ function getConnectedParamsForTransform(
 
   return connectedEdges.map((e) => {
     const node = findNode(nodes, e.source);
-    const field = e.sourceHandle;
+    const field =
+      node.data.transformName === "uuid"
+        ? (node.data.args as ValueParameter[])[0].value.toString()
+        : e.sourceHandle;
 
     return field
-      ? transformParamFromNode(node, field)
-      : valueParam(extractValueFromNode(node));
+      ? transformParamFromNode(node, field as string)
+      : valueParam(node.id, extractValueFromNode(node));
   });
 }
 
@@ -286,7 +316,7 @@ export function attachParentChild(parent: FMLBaseEntity, child: FMLBaseEntity) {
     parent.type === child.type ||
     ["sourceTargetNode", "groupNode"].includes(child.type)
   ) {
-    parent.addChild(child);
+    if (!parent.children.includes(child)) parent.addChild(child);
     child.father = parent;
   }
 }
@@ -367,10 +397,16 @@ export function createTreeVariables(
   node: FMLBaseEntity,
   new_nodes: Dependency[] = [],
 ) {
-  if (isNode(node) && !isGroupNode(node) && !isFakeNode(node)) {
+  if (
+    isNode(node) &&
+    !isTransformNode(node) &&
+    !isGroupNode(node) &&
+    !isFakeNode(node)
+  ) {
     const new_node = { alias: node.alias, children: [] } as Dependency;
 
     if (node.father && !isFakeNode(node.father)) {
+      //console.log(new_node)
       const field = new_node.alias.split("_")[0];
 
       const prev_node = new_nodes
@@ -394,26 +430,49 @@ export function createTreeVariables(
 
 export function collectDependencies(
   node: FMLBaseEntity,
-  findNode: (id: string) => FMLBaseEntity,
+  nodes: Node[],
+  edges: Edge[],
+  nodeMap: Map<string, FMLBaseEntity>,
   dependencies: Map<string, FMLBaseEntity[]> = new Map(),
 ): Map<string, FMLBaseEntity[]> {
   if (isRule(node) && node.isReference) {
     if (!dependencies.has(node.id)) {
       dependencies.set(node.id, []);
     }
-    dependencies.get(node.id)!.push(...getPath(findNode(node.leftParam.id)));
+    const dependenciesArrows = edges
+      .filter((e) => node.rightParams.some((r) => r.id === e.source))
+      .filter((e) => e.target != node.father?.id);
+
+    dependenciesArrows
+      .flatMap((dep) => {
+        return [...nodeMap.values()]
+          .filter((n) => n.children.length > 0 && !isFakeNode(n))
+          .flatMap((n) => n.children)
+          .filter(isRule)
+          .filter(
+            (rule) =>
+              rule.rightParams.find((param) => param.id === dep.source) &&
+              node.id != rule.id,
+          );
+      })
+      .filter(
+        (rule, index, self) =>
+          index === self.findIndex((r) => r.id === rule.id),
+      )
+      .forEach((r) => dependencies.get(node.id)!.push(...getPath(r!)));
   }
 
   for (const child of node.children) {
-    collectDependencies(child, findNode, dependencies);
+    collectDependencies(child, nodes, edges, nodeMap, dependencies);
   }
 
   return dependencies;
 }
 
 export function getPath(node: FMLBaseEntity, path: FMLBaseEntity[] = []) {
-  if (node.father) return getPath(node.father, [node, ...path]);
-  else return [node, ...path];
+  if (node.father && node.father.type != "fakeNode")
+    return getPath(node.father, [node, ...path]);
+  else return [...path, node];
 }
 
 const isSourceOrTargetRule = (node: FMLBaseEntity): boolean =>
@@ -425,6 +484,142 @@ const isCreate = (node: FMLBaseEntity): boolean =>
 const isGroupFMLNode = (node: FMLBaseEntity): node is FMLGroupNode =>
   !isRule(node) && isGroupNode(node);
 
+const flatList = (dependency: Dependency): Dependency[] => {
+  return dependency.children.length > 0
+    ? [dependency, ...dependency.children.flatMap(flatList)]
+    : [dependency];
+};
+
+const getChain = (name: Partial<Dependency>, tree: Dependency[]) => {
+  const getFather = (dep: Dependency): Partial<Dependency>[] =>
+    dep.father
+      ? [...getFather(dep.father), { alias: dep.alias, field: dep.field }]
+      : [{ alias: dep.alias, field: dep.field }];
+
+  const node = tree
+    .flatMap(flatList)
+    .find((d) => d.alias === name.alias && d.field === name.field);
+
+  const chain = node ? getFather(node) : [];
+  const mappedChain = chain.map((c, i) =>
+    i === chain.length - 1
+      ? { ...c, add_alias: c.alias!.split("_")[1] }
+      : { ...c, add_alias: chain[i + 1].alias!.split("_")[1] },
+  );
+
+  return mappedChain;
+};
+
+const getDependencies = (
+  params: TransformParameter[],
+  dependencies: Dependency[],
+): Partial<Dependency> & { add_alias: string }[] => {
+  return params.flatMap((param) =>
+    _.uniqBy(
+      getChain({ alias: param.alias, field: param.field }, dependencies),
+      (s) => `${s.alias}-${s.field}`,
+    ),
+  );
+};
+
+const indent = (level: number) => "  ".repeat(level > 0 ? level : 0);
+
+const step = (s: Partial<Dependency> & { add_alias: string }) =>
+  `${s.alias}${s.field ? `.${s.field} as ${s.field}_${s.add_alias} ` : " "}`;
+
+const open = (
+  chain: Partial<Dependency> & { add_alias: string }[],
+  offset = 0,
+  isGroup = false,
+  condition = "",
+) =>
+  chain
+    .map(
+      (s, i) =>
+        indent(i + offset) +
+        step(s) +
+        `${condition && i == chain.length - 1 ? `where ${condition} ` : ""}then ` +
+        (isGroup ? (offset === 0 || i != chain.length - 1 ? "{" : "") : "{"),
+    )
+    .join("\n");
+
+const close = (n: number, from: number) =>
+  Array.from({ length: n }, (_, i) => indent(from - i) + `} "";`).join("\n");
+
+const shift = (s: string, level: number) =>
+  s
+    .split("\n")
+    .map((l: string) => indent(level) + l)
+    .join("\n");
+
+const buildBlock = (
+  sourceChain: Partial<Dependency> & { add_alias: string }[],
+  targetChain: Partial<Dependency> & { add_alias: string }[],
+  rule: string,
+  isGroup: boolean,
+  level: number,
+  extraIndent = 0,
+  condition = "",
+) =>
+  shift(
+    [
+      open(sourceChain, 0, isGroup, condition),
+      open(targetChain, sourceChain.length, isGroup) +
+        (extraIndent ? indent(extraIndent) : "") +
+        rule,
+      close(
+        targetChain.length - 1,
+        sourceChain.length + targetChain.length - 2,
+      ),
+      close(sourceChain.length, sourceChain.length - 1),
+    ]
+      .filter(Boolean)
+      .join("\n"),
+    level,
+  );
+
+const printBlock =
+  (
+    variables: { sources: Dependency[]; targets: Dependency[] },
+    node: FMLBaseEntity,
+    level: number,
+  ) =>
+  (rule = "") => {
+    const { sources, targets } = variables;
+
+    if (isGroupNode(node)) {
+      return buildBlock(
+        getDependencies(node.sources, sources),
+        getDependencies(node.targets, targets),
+        rule,
+        true,
+        level,
+      );
+    }
+
+    if (isRule(node)) {
+      const condition = node.cond;
+      const sourceChain = getDependencies(
+        node.rightParams.filter(isTransformParam),
+        sources,
+      );
+      const targetChain = getDependencies([node.leftParam], sources);
+
+      const extraIndent =
+        sourceChain.length || targetChain.length ? level + 1 : 0;
+
+      return buildBlock(
+        sourceChain,
+        targetChain,
+        rule,
+        false,
+        level,
+        extraIndent,
+        condition,
+      );
+    }
+  };
+
 export function printRuleTree(
   node: FMLBaseEntity,
   dependencies: Map<string, FMLBaseEntity[]>,
@@ -432,144 +627,26 @@ export function printRuleTree(
   lines: string[] = [],
   level = 1,
   visited = new Set<string>(),
+  isDependant = false,
 ): string[] {
   if (visited.has(node.id)) return lines;
 
-  const flatList = (dependency: Dependency): Dependency[] => {
-    return dependency.children.length > 0
-      ? [dependency, ...dependency.children.flatMap(flatList)]
-      : [dependency];
-  };
-
-  const getChain = (name: Partial<Dependency>, tree: Dependency[]) => {
-    const getFather = (dep: Dependency): Partial<Dependency>[] =>
-      dep.father
-        ? [...getFather(dep.father), { alias: dep.alias, field: dep.field }]
-        : [{ alias: dep.alias, field: dep.field }];
-
-    const node = tree
-      .flatMap(flatList)
-      .find((d) => d.alias === name.alias && d.field === name.field);
-
-    const chain = node ? getFather(node) : [];
-    const mappedChain = chain.map((c, i) =>
-      i === chain.length - 1
-        ? { ...c, add_alias: c.alias!.split("_")[1] }
-        : { ...c, add_alias: chain[i + 1].alias!.split("_")[1] },
-    );
-
-    return mappedChain;
-  };
-
-  const getDependencies = (
-    params: TransformParameter[],
-    dependencies: Dependency[],
-  ): Partial<Dependency> & { add_alias: string }[] => {
-    return params.flatMap((param) =>
-      _.uniqBy(
-        getChain({ alias: param.alias, field: param.field }, dependencies),
-        (s) => `${s.alias}-${s.field}`,
-      ),
-    );
-  };
-
-  const indent = (level: number) => "  ".repeat(level > 0 ? level : 0);
-
-  const step = (s: Partial<Dependency> & { add_alias: string }) =>
-    `${s.alias}${s.field ? `.${s.field} as ${s.field}_${s.add_alias} ` : " "}`;
-
-  const open = (
-    chain: Partial<Dependency> & { add_alias: string }[],
-    offset = 0,
-    isGroup = false,
-  ) =>
-    chain
-      .map(
-        (s, i) =>
-          indent(i + offset) +
-          step(s) +
-          "then " +
-          (isGroup ? (offset === 0 || i != chain.length - 1 ? "{" : "") : "{"),
-      )
-      .join("\n");
-
-  const close = (n: number, from: number) =>
-    Array.from({ length: n }, (_, i) => indent(from - i) + `} "";`).join("\n");
-
-  const shift = (s: string) =>
-    s
-      .split("\n")
-      .map((l: string) => indent(level) + l)
-      .join("\n");
-  
-  const buildBlock = (
-    sourceChain: Partial<Dependency> & { add_alias: string }[],
-    targetChain: Partial<Dependency> & { add_alias: string }[],
-    rule: string,
-    isGroup: boolean,
-    extraIndent = 0,
-  ) =>
-    shift(
-      [
-        open(sourceChain, 0, isGroup),
-        open(targetChain, sourceChain.length, isGroup) +
-          (extraIndent ? indent(extraIndent) : "") +
-          rule,
-        close(
-          targetChain.length - 1,
-          sourceChain.length + targetChain.length - 2,
-        ),
-        close(sourceChain.length, sourceChain.length - 1),
-      ]
-        .filter(Boolean)
-        .join("\n"),
-    );
-
-  const printBlock =
-    (
-      variables: { sources: Dependency[]; targets: Dependency[] },
-      node: FMLBaseEntity,
-    ) =>
-    (rule = "") => {
-      const { sources, targets } = variables;
-
-      if (isGroupNode(node)) {
-        return buildBlock(
-          getDependencies(node.sources, sources),
-          getDependencies(node.targets, targets),
-          rule,
-          true,
-        );
-      }
-
-      if (isRule(node)) {
-        const sourceChain = getDependencies(
-          node.rightParams.filter(isTransformParam),
-          sources,
-        );
-        const targetChain = getDependencies([node.leftParam], sources);
-
-        const extraIndent =
-          sourceChain.length || targetChain.length ? level + 1 : 0;
-
-        return buildBlock(sourceChain, targetChain, rule, false, extraIndent);
-      }
-    };
-
   const fixCreateBlock = (level: number) => indent(level) + '} "create";';
-
-  const createBlock = printBlock(variables, node);
-
-  for (const dep of dependencies.get(node.id) ?? []) {
-    printRuleTree(dep, dependencies, variables, lines, level, visited);
-  }
+  const createBlock = printBlock(variables, node, level);
 
   const shouldPrint = isSourceOrTargetRule(node) || isGroupFMLNode(node);
   const isCreateRule = isCreate(node);
 
   if (shouldPrint) {
-    const block = createBlock(variables.sources[0].alias + " -> " + node.toString());
+    const toAdd = variables.sources[0].alias + " -> ";
+    const block = createBlock(
+      (isDependant ? " ".repeat(toAdd.length) : toAdd) + node.toString(),
+    );
     lines.push(block!);
+  }
+
+  for (const dep of dependencies.get(node.id) ?? []) {
+    printRuleTree(dep, dependencies, variables, lines, level, visited, true);
   }
 
   visited.add(node.id);

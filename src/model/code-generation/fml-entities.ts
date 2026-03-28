@@ -76,6 +76,7 @@ export class FMLGroupNode extends FMLNode {
 }
 
 export class FMLRule extends FMLBaseEntity {
+  cond: string;
   constructor(
     id: string,
     type: NodeType,
@@ -84,13 +85,17 @@ export class FMLRule extends FMLBaseEntity {
     public rightParams: Parameter[] = [],
     public readonly isReference: boolean = false,
     public readonly parameters?: any[],
-    public readonly condition?: string,
   ) {
     super(id, type);
+    this.cond = ''
+  }
+
+  setCondition(condition: string) {
+    this.cond = condition
+    return this
   }
 
   private formatSource(param: Parameter): string {
-    //console.log(param);
     if (param.type === "value") return parameterToString(param);
     return `${param.field ? `${param.field}_${param.alias.split("_")[1]}` : param.alias}`;
   }
@@ -105,7 +110,6 @@ export class FMLRule extends FMLBaseEntity {
 
   toString(): string {
     const target = this.formatTarget();
-    console.log(this.rightParams)
     switch (this.action) {
       case "copy":
         return `${target} = ${this.formatSource(this.rightParams[0])} "copy";`;
@@ -114,13 +118,13 @@ export class FMLRule extends FMLBaseEntity {
       case "create":
         return `${target} = create("${(this.rightParams[0] as TransformParameter).resource}") as ${(this.rightParams[0] as TransformParameter).alias} then {`;
       case "translate":
-        return `${target} = translate(${this.rightParams.map(parameterToString).join(",")}) "translate";`;
+        return `${target} = translate(${this.rightParams.map(parameterToString).join(", ")}) "translate";`;
       case "append":
-        return `${target} = append(${this.rightParams.map(parameterToString).join(",")}) "append";`;
+        return `${target} = append(${this.rightParams.map(parameterToString).join(", ")}) "append";`;
       case "evaluate":
-        return `${target} = evaluate(${this.rightParams.map(parameterToString).join(",")}) "evaluate";`;
+        return `${target} = evaluate(${this.rightParams.map(parameterToString).join(", ")}) "evaluate";`;
       case "uuid":
-        return `${target} = ${(this.rightParams[0] as TransformParameter).alias}`;
+        return `${target} = ${(this.rightParams[0] as TransformParameter).alias}${this.isReference ? ',' : ' "uuid";'}`;
       default:
         return "";
     }

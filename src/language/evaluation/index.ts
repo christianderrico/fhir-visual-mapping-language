@@ -2,14 +2,15 @@ import type { useFlow } from "src/providers/FlowProvider";
 import type { SyntaxNode, Tree } from "@lezer/common";
 import { Datatype } from "src-common/fhir-types";
 import type { XYPosition } from "@xyflow/react";
-import {v4 as uuid} from 'uuid';
+import { v4 as uuid } from "uuid";
 
 export interface EvaluationContext {
   data: {
-    xyPos: XYPosition,
-    target: string,
-    targetHandle: string | null,
-  },
+    xyPos: XYPosition;
+    target: string;
+    targetHandle: string | null;
+    condition?: string;
+  };
   flow: ReturnType<typeof useFlow>;
 }
 
@@ -20,18 +21,20 @@ export function evaluateReference(
 ): void {
   const cursor = node.cursor();
   cursor.firstChild();
-  console.log("evaluateReference")
-  console.log(cursor)
-  console.log('params', node, ctx.data.target, ctx.data.targetHandle)
+  console.log("evaluateReference");
+  console.log(cursor);
+  console.log("params", node, ctx.data.target, ctx.data.targetHandle);
 
   if (cursor.name === "Variable") {
     const identifier = doc.slice(cursor.from, cursor.to);
-    const node = ctx.flow.getActiveNodesAndEdges().nodes.find(x => x.data.alias === identifier)!.id;
+    const node = ctx.flow
+      .getActiveNodesAndEdges()
+      .nodes.find((x) => x.data.alias === identifier)!.id;
     const edgeId = ctx.data.target + "." + ctx.data.targetHandle;
     ctx.flow.addEdge({
       id: edgeId,
       source: node,
-      target: ctx.data.target, 
+      target: ctx.data.target,
       targetHandle: ctx.data.targetHandle,
     });
   } else if (cursor.name === "FieldAccess") {
@@ -55,20 +58,26 @@ export function evaluateReference(
       throw new Error("TODO: implement chain unrolling");
     }
 
-    const node = ctx.flow.getActiveNodesAndEdges().nodes.find(x => x.data.alias === identifier)!.id;
-    console.log(ctx.flow.getActiveNodesAndEdges().nodes.find(x => x.data.alias === identifier))
+    const node = ctx.flow
+      .getActiveNodesAndEdges()
+      .nodes.find((x) => x.data.alias === identifier)!.id;
+    console.log(
+      ctx.flow
+        .getActiveNodesAndEdges()
+        .nodes.find((x) => x.data.alias === identifier),
+    );
 
     const edgeId = ctx.data.target + "." + ctx.data.targetHandle;
-    console.log('Reference', edgeId)
-    console.log("NODO: ", node)
-    console.log(propertyChain)
+    console.log("Reference", edgeId);
+    console.log("NODO: ", node);
+    console.log(propertyChain);
     ctx.flow.addEdge({
       id: uuid(),
       source: node,
       sourceHandle: propertyChain[0],
       target: ctx.data.target,
       targetHandle: ctx.data.targetHandle,
-    })
+    });
   }
 }
 
@@ -100,21 +109,17 @@ export function evaluateLiteral(
     type: "transformNode",
     data: {
       transformName: "const",
-      args: [
-        { datatype, value: value }
-
-      ],
+      args: [{ datatype, value: value }],
       groupName: ctx.flow.activeTab,
-    }
-  })
+    },
+  });
 
-  //const edgeId = ctx.data.target + "." + ctx.data.targetHandle;
   ctx.flow.addEdge({
     id: uuid(),
     source: nodeId,
     target: ctx.data.target,
     targetHandle: ctx.data.targetHandle,
-  })
+  });
 
   console.log("literal", doc.slice(node.from, node.to));
 }
@@ -125,16 +130,26 @@ export function evaluate(
   ctx: EvaluationContext,
 ): void {
   const cursor = tree.cursor(); // program
-  cursor.firstChild(); // expression
-  cursor.firstChild(); // TransformCall | Reference | Literal
+
+  let flag = true;
+  while (cursor.name != "FpPrimary" && cursor.name != "Reference" && flag) {
+    flag = cursor.firstChild();
+  }
+
+  if (cursor.name != "Reference") cursor.firstChild();
+
   switch (cursor.name) {
-    case "TransformCall":
+    case "Call":
       cursor.firstChild(); // Identifier
       const transformName = doc.slice(cursor.from, cursor.to);
       cursor.nextSibling(); // TransformArgs
       cursor.firstChild(); // TransformArg
 
       const nodeId = uuid();
+
+      console.log(ctx.data.target)
+      console.log("NOME DELLA TRANSFORM NAME: ", transformName)
+
       ctx.flow.addNode({
         id: nodeId,
         position: ctx.data.xyPos,
@@ -142,27 +157,32 @@ export function evaluate(
         type: "transformNode",
         data: {
           transformName,
-          args: [
-          ],
+          args: transformName === 'uuid' ? [{ datatype: Datatype.STRING, value: 'uuid_' + ctx.data.target }] : [],
           groupName: ctx.flow.activeTab,
-        }
-      })
+        },
+      });
 
       const edgeId = ctx.data.target + "." + ctx.data.targetHandle;
-      console.log("EDGE ID: ", edgeId)
 
       ctx.flow.addEdge({
         id: edgeId,
+        type: "customEdge",
         source: nodeId,
         target: ctx.data.target,
         targetHandle: ctx.data.targetHandle,
-      })
+        data: {
+          condition: ctx.data.condition,
+        },
+      });
 
       console.group(transformName);
 
-      const newCtx = {...ctx};
+      const newCtx = { ...ctx };
       let targetHandleNum = 0;
-      newCtx.data.xyPos = {...newCtx.data.xyPos, x: newCtx.data.xyPos.x - 150 };
+      newCtx.data.xyPos = {
+        ...newCtx.data.xyPos,
+        x: newCtx.data.xyPos.x - 150,
+      };
       newCtx.data.target = nodeId;
       newCtx.data.targetHandle = targetHandleNum.toString();
 
@@ -170,10 +190,13 @@ export function evaluate(
         cursor.firstChild(); // Reference | Literal
         if ((cursor.name as string) === "Reference") {
           evaluateReference(cursor.node, doc, newCtx);
-        } else if ((cursor.name as string) === "Literal") {
+        } else if ((cursor.name as string) === "FpExpression") {
           evaluateLiteral(cursor.node, doc, newCtx);
         }
-        newCtx.data.xyPos = { x: newCtx.data.xyPos.x, y: newCtx.data.xyPos.y + 50 };
+        newCtx.data.xyPos = {
+          x: newCtx.data.xyPos.x,
+          y: newCtx.data.xyPos.y + 50,
+        };
         targetHandleNum++;
         newCtx.data.targetHandle = targetHandleNum.toString();
         cursor.parent(); // TransformArg
@@ -188,7 +211,3 @@ export function evaluate(
       break;
   }
 }
-
-// export function evaluateCondition(fhirPathExpr: string, ctx: EvaluationContext){
-  
-// }

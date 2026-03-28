@@ -1,10 +1,6 @@
 import { type Edge, type Node } from "@xyflow/react";
 import { FMLGroupNode, FMLNode, FMLRule } from "./fml-entities";
-import {
-  findNode,
-  isGroupNode,
-  isTransformParam,
-} from "./fml-utils";
+import { debugTree, findNode, isGroupNode, isTransformParam } from "./fml-utils";
 import {
   attachParentChild,
   buildRules,
@@ -40,7 +36,7 @@ function getAllGroupsOrdered(
 
 export function generateTemplate(props: GraphProps) {
   const { templateName, groupNodesByTab, nodes, edges } = props;
-  const groupKey = Object.keys(groupNodesByTab)[0]
+  const groupKey = Object.keys(groupNodesByTab)[0];
   const ordered_groups = getAllGroupsOrdered(groupNodesByTab, groupKey);
 
   const getGroupNodes =
@@ -231,9 +227,6 @@ function generateGroup(
   const sourceTree = createTreeVariables(mockFMLSource);
   const targetTree = createTreeVariables(mockFMLTarget);
 
-  //debugTree(mockFMLTarget);
-  //debugTree(mockFMLSource);
-
   let lines = [];
   lines.push(
     "",
@@ -244,11 +237,18 @@ function generateGroup(
     ]}${srcs.length > 0 ? ", " : ""}${[...tgts.map((t) => `target ${t.alias} : ${t.resource}`)]}) {`,
   );
 
+  debugTree(mockFMLTarget)
+
   if (srcs.length > 0 && tgts.length > 0) {
     const dependencies = collectDependencies(
       mockFMLTarget,
-      (id) => nodeMap.get(id)!,
+      nodes,
+      edges,
+      nodeMap,
     );
+
+    console.log(dependencies)
+
     lines = printRuleTree(
       mockFMLTarget,
       dependencies,
