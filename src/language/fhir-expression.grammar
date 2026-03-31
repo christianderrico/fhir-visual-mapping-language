@@ -8,7 +8,6 @@
 
 Expression {
   FpExpression
-| Reference
 }
 
 /* ----------------- */
@@ -21,27 +20,6 @@ Call {
 
 ArgList {
   Expression ("," Expression)*
-}
-
-/* ----------------- */
-/* References        */
-/* ----------------- */
-
-Reference {
-  Variable
-| FieldAccess
-}
-
-Variable {
-  Identifier
-}
-
-FieldAccess {
-  Variable PropertyAccess+
-}
-
-PropertyAccess {
-  "." Identifier
 }
 
 /* ----------------- */
@@ -139,7 +117,7 @@ FpPrefix {
 | FpPostfix
 }
 
-/* postfix */
+/* postfix — gestisce anche field access e index */
 FpPostfix {
   FpPrimary
 | FpPostfix "." Identifier
@@ -151,6 +129,7 @@ FpPrimary {
   Literal
 | ExternalConstant
 | Call
+| Identifier
 | "$this"
 | "$index"
 | "$total"
@@ -178,7 +157,7 @@ ExternalConstant {
   String { '"' (!["\\] | "\\" _)* '"' }
 
   Decimal {
-    $[0-9]* "." $[0-9]+
+    $[0-9]+ "." $[0-9]+
   }
 
   Integer {
