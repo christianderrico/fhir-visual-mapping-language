@@ -49,8 +49,6 @@ export const CustomEdge: FC<EdgeProps<CustomEdgeType>> = ({
     targetY,
   });
 
-  console.log("OOOOOOOOOOO: ", data?.condition)
-
   if (!data?.condition) {
     return <BaseEdge id={id} path={edgePath} style={EDGE_STYLES.base} />;
   }

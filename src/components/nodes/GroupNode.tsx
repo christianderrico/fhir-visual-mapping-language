@@ -21,6 +21,7 @@ const PADDING = 8;
 
 export const GroupNode: FC<GroupNodeProps> = (props) => {
   const { sources, targets } = props.data;
+  //console.log("GroupNode Props: ", props);
   const rowCount = Math.max(sources.length, targets.length);
 
   return (
@@ -46,7 +47,6 @@ export const GroupNode: FC<GroupNodeProps> = (props) => {
 
       <Divider mb="md" />
 
-      {/* Rows */}
       <Stack gap={4} style={{ position: "relative" }}>
         {range(rowCount).map((i) => {
           const source = sources[i];
@@ -75,8 +75,8 @@ export const GroupNode: FC<GroupNodeProps> = (props) => {
                 {source && (
                   <>
                     <Handle
-                      id={`source-${source}`}
-                      type="target"
+                      id={`target-${i}`}
+                      type="source"
                       position={Position.Left}
                       className={clsx(classes.pink, classes.handle)}
                       style={{
@@ -130,7 +130,7 @@ export const GroupNode: FC<GroupNodeProps> = (props) => {
                       {target}
                     </Text>
                     <Handle
-                      id={`target-${target}`}
+                      id={`source-${i}`}
                       type="source"
                       position={Position.Right}
                       className={clsx(classes.blue, classes.handle)}

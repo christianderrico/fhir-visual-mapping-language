@@ -1,7 +1,8 @@
 import {
-  //addEdge,
   Background,
+  ConnectionMode,
   Controls,
+  Handle,
   ReactFlow,
   useReactFlow,
   type Edge,
@@ -12,7 +13,6 @@ import {
   type OnNodesChange,
 } from "@xyflow/react";
 import { type FC, useCallback } from "react";
-//import { Tree, TreeCursor, type SyntaxNode } from "@lezer/common";
 import { type Field, type PrimitiveCodeField } from "src-common/fhir-types";
 import { Datatype } from "src-common/fhir-types";
 import { useTypeEnvironment } from "src/hooks/useTypeEnvironment";
@@ -29,11 +29,10 @@ import { TransformNode } from "src/components/nodes/TransformNode";
 import { getNonPrimitiveType as _getNonPrimitiveType } from "../model/type-environment-utils";
 import { useFlow } from "src/providers/FlowProvider";
 import { GroupNode } from "src/components/nodes/GroupNode";
-//import { dumpTree } from "src/language/util";
 import { evaluate } from "src/language/evaluation";
 import { makeId } from "src/utils/field-based-id";
 import { CustomEdge } from "src/components/edges/CustomEdge";
-//import { toPlainObject } from "lodash";
+import { url } from "src-common/strict-types";
 
 const nodeTypes = {
   sourceNode: SourceNode,
@@ -43,7 +42,14 @@ const nodeTypes = {
 };
 
 const edgeTypes = {
-  customEdge: CustomEdge
+  customEdge: CustomEdge,
+};
+
+function makeEdge(nodeId: string, fromNode: Node, fromHandle: Handle) {
+  const isTargetNode = fromNode.type === "targetNode";
+  return isTargetNode
+    ? { source: nodeId, target: fromNode.id, targetHandle: fromHandle.id }
+    : { source: fromNode.id, target: nodeId, sourceHandle: fromHandle.id };
 }
 
 export const FhirMappingFlow: FC<{
@@ -55,12 +61,6 @@ export const FhirMappingFlow: FC<{
   onInit: OnInit;
 }> = ({ nodes, onNodesChange, edges, onEdgesChange, onInit }) => {
   const ctx = useFlow();
-  //
-  // const {nodes, edges} = ctx.getActiveNodesAndEdges();
-  // const onEdgesChange = ctx.changeEdgesByTab;
-  // const onNodesChange = ctx.changeNodesByTab;
-
-  //const [activeTab, setActiveTab] = useState(ctx.activeTab);
 
   const typeEnv = useTypeEnvironment();
   const getNonPrimitive = useCallback(_getNonPrimitiveType(typeEnv), [
@@ -88,7 +88,6 @@ export const FhirMappingFlow: FC<{
         "changedTouches" in event ? event.changedTouches[0] : event;
       const { fromHandle } = connectionState;
       const fromNode = connectionState.fromNode!;
-      //const sourceNode = connectionState.toNode;
       const xyPos = screenToFlowPosition({ x: clientX, y: clientY });
 
       if (fromHandle === null) return;
@@ -103,11 +102,9 @@ export const FhirMappingFlow: FC<{
           : type.fields;
       const field = fields[fromHandle.id!];
 
-      if (
-        fromNode.type === "targetNode" &&
-        isOptionField(field) &&
-        field.valueSet !== undefined
-      ) { //const with options
+      if (isOptionField(field) && field.valueSet !== undefined) {
+        //const with options
+        console.log("OptionField");
         const candidates = typeEnv.getOptions(field.valueSet.url);
         const chosen = await askOption(Object.values(candidates));
 
@@ -124,28 +121,30 @@ export const FhirMappingFlow: FC<{
           origin: [0.5, 0.0] as [number, number],
         });
 
-        const edgeId = makeId(fromNode.id, fromHandle.id);
+        const edgeId = makeId();
 
         ctx.addEdge({
           id: edgeId,
-          type: 'customEdge',
+          type: "customEdge",
           source: nodeId,
           target: fromNode.id,
           targetHandle: fromHandle.id,
         });
         return;
       }
-      if (fromNode.type === "targetNode" && field.kind === "primitive") {
+      if (field.kind === "primitive") {
         const { tree, value, condition } = await askExpression(
           "Insert value for this field",
         );
+
+        console.log("Primitive edge");
 
         evaluate(tree, value, {
           data: {
             xyPos,
             target: fromNode!.id,
             targetHandle: fromHandle!.id!,
-            condition: condition
+            condition: condition,
           },
           flow: ctx,
         });
@@ -154,7 +153,6 @@ export const FhirMappingFlow: FC<{
 
       // abstract field
       if (
-        fromNode.type === "targetNode" &&
         field?.kind === "complex" &&
         getNonPrimitive(field.value) !== undefined &&
         getNonPrimitive(field.value)!.abstract
@@ -171,7 +169,7 @@ export const FhirMappingFlow: FC<{
           const nodeId = ctx.idGen.current.getId();
           ctx.addNode({
             id: nodeId,
-            type: "targetNode",
+            type: fromNode.type,
             position: xyPos,
             data: {
               type: choiceType,
@@ -183,25 +181,22 @@ export const FhirMappingFlow: FC<{
             origin: [0.5, 0.0] as [number, number],
           });
 
-          const edgeId = makeId(fromNode.id, fromHandle.id);
+          const edgeId = makeId();
+          const edge = makeEdge(nodeId, fromNode, fromHandle);
+
           ctx.addEdge({
             type: "customEdge",
             id: edgeId,
-            source: nodeId,
-            target: fromNode.id,
-            targetHandle: fromHandle.id,
+            ...edge,
           });
           return;
         }
       }
-      if (
-        fromNode.type === "targetNode" &&
-        (field.kind === "complex" || field.kind === "backbone-element")
-      ) {
+      if (field.kind === "complex" || field.kind === "backbone-element") {
         const nodeId = ctx.idGen.current.getId();
         ctx.addNode({
           id: nodeId,
-          type: "targetNode",
+          type: fromNode.type,
           position: xyPos,
           data: {
             alias: asVariableName(fromHandle.id!) + "_" + nodeId,
@@ -212,7 +207,33 @@ export const FhirMappingFlow: FC<{
           },
           origin: [0.5, 0.0] as [number, number],
         });
-        const edgeId = makeId(fromNode.id, fromHandle.id);
+        const edgeId = makeId();
+
+        const edge = makeEdge(nodeId, fromNode, fromHandle);
+        ctx.addEdge({ id: edgeId, type: "customEdge", ...edge });
+        return;
+      }
+      if (field.kind === "reference") {
+        const referenceUrl = url(
+          "http://hl7.org/fhir/StructureDefinition/Reference",
+        );
+        const nodeId = ctx.idGen.current.getId();
+        const type = typeEnv.getType(referenceUrl);
+
+        ctx.addNode({
+          id: nodeId,
+          type: fromNode.type,
+          position: xyPos,
+          data: {
+            alias: asVariableName("Reference") + "_" + nodeId,
+            type: { ...type, name: "Reference" },
+            inner: true,
+            expand: true,
+            groupName: ctx.activeTab,
+          },
+          origin: [0.5, 0.0] as [number, number],
+        });
+        const edgeId = makeId();
         ctx.addEdge({
           id: edgeId,
           type: "customEdge",
@@ -222,11 +243,7 @@ export const FhirMappingFlow: FC<{
         });
         return;
       }
-      if (
-        fromNode.type === "targetNode" &&
-        field.kind === "alternatives" &&
-        !connectionState.toHandle
-      ) {
+      if (field.kind === "alternatives" && !connectionState.toHandle) {
         const objectsToCreate = field.value
           .filter((v) => ["complex"].includes(v.kind))
           .map((v) => (v.kind === "complex" ? v.value : ""));
@@ -251,7 +268,7 @@ export const FhirMappingFlow: FC<{
           );
           ctx.addNode({
             id: nodeId,
-            type: "targetNode",
+            type: fromNode.type,
             position: xyPos,
             data: {
               alias: asVariableName(option) + "_" + nodeId,
@@ -262,10 +279,10 @@ export const FhirMappingFlow: FC<{
             },
             origin: [0.5, 0.0] as [number, number],
           });
-          const edgeId = makeId(fromNode.id, fromHandle.id);
+          const edgeId = makeId();
           ctx.addEdge({
             id: edgeId,
-            type: 'customEdge',
+            type: "customEdge",
             source: nodeId,
             target: fromNode.id,
             targetHandle: fromHandle.id,
@@ -285,18 +302,18 @@ export const FhirMappingFlow: FC<{
       const { isValid, fromNode, fromHandle, toNode, toHandle } =
         connectionState;
 
+      console.log("Connection State: ", connectionState);
+
       if (fromNode === null) return;
-      if (!isValid) return onDroppedEdge(event, connectionState);
+      else if (!isValid) return onDroppedEdge(event, connectionState);
 
-      console.log("STOPALOAD")
-
-      if (
+      else if (
         fromNode.type === "transformNode" ||
         toNode?.type === "transformNode"
       ) {
         ctx.addEdge({
           id: toNode?.id + "." + toHandle?.id,
-          type: 'customEdge',
+          type: "customEdge",
           source: fromNode.id,
           sourceHandle: fromHandle?.id,
           target: toNode?.id ?? "",
@@ -305,24 +322,22 @@ export const FhirMappingFlow: FC<{
         return;
       }
 
-      if (fromNode.type === "sourceNode" && toNode?.type === "targetNode") {
+      else if (fromNode.type === "sourceNode" && toNode?.type === "targetNode") {
         const { tree, value, condition } = await askExpression(
           "Copy value",
           fromNode?.data.alias + (fromHandle?.id ? "." + fromHandle?.id : ""),
         );
-
-        console.log("THE CONDITION: ", condition);
 
         evaluate(tree, value, {
           data: {
             xyPos,
             target: toNode.id,
             targetHandle: toHandle?.id!,
-            condition: condition
+            condition: condition,
           },
           flow: ctx,
         });
-        
+
         ctx.addConditionToEdge(
           {
             id: "",
@@ -335,63 +350,45 @@ export const FhirMappingFlow: FC<{
         );
         return;
       }
+      else if (toNode?.type === "groupNode" || fromNode.type === "groupNode") {
 
-      if (fromNode.type === "targetNode" && toNode?.type === "sourceNode") {
+        const edge = {
+          source: fromNode.id,
+          sourceHandle: fromHandle?.id,
+          target: toNode?.id,
+          targetHandle: toHandle?.id,
+        }
+
+        const newEdge: Edge = {
+          id: makeId(),
+          type: "customEdge",
+          source: edge.source!,
+          sourceHandle: edge.sourceHandle,
+          target: edge.target!,
+          targetHandle: edge.targetHandle,
+        }
+
+        ctx.addEdge(newEdge);
+      }
+      //fromNode.type === "targetNode" && toNode?.type === "sourceNode"
+      else if (toNode?.type === "sourceNode") {
         const { tree, value, condition } = await askExpression(
           "Copy value",
           toNode?.data.alias + (toHandle?.id ? "." + toHandle?.id : ""),
         );
 
-        console.log("EL CONDICIO: ", condition);
+        //console.log("EL CONDICIO: ", condition);
 
         evaluate(tree, value, {
           data: {
             xyPos,
             target: fromNode.id,
             targetHandle: fromHandle?.id!,
-            condition: condition
+            condition: condition,
           },
           flow: ctx,
         });
         return;
-      }
-
-      // Dragging source node (NOT a field) to a group
-      if (
-        fromNode.type === "sourceNode" &&
-        fromHandle !== null &&
-        toNode?.type === "groupNode"
-      ) {
-        // TODO: finish this
-        //const res = fromNode.data.type as NonPrimitiveResource;
-        ctx.addEdge({
-          id: toNode.id,
-          type: 'customEdge',
-          source: fromNode.id,
-          sourceHandle: fromHandle.id,
-          target: toNode.id,
-          targetHandle: toHandle?.id,
-        });
-        console.log("groupNode data", toNode.data, toHandle);
-      }
-
-      // Dragging source node (NOT a field) to a group
-      if (
-        fromNode.type === "targetNode" &&
-        fromHandle !== null &&
-        toNode?.type === "groupNode"
-      ) {
-        // TODO: finish this
-        //const res = fromNode.data.type as NonPrimitiveResource;
-        ctx.addEdge({
-          id: makeId(toNode.id, toHandle?.id),
-          type: 'customEdge',
-          source: toNode.id,
-          sourceHandle: toHandle?.id,
-          target: fromNode.id,
-          targetHandle: fromHandle?.id,
-        });
-        console.log("groupNode data", toNode.data, toHandle);
       }
     },
     [ctx],
@@ -428,6 +425,7 @@ export const FhirMappingFlow: FC<{
       <ReactFlow
         nodes={nodes}
         onNodesChange={onNodesChange}
+        connectionMode={ConnectionMode.Loose}
         edges={edges}
         onDrop={onDrop}
         onDragOver={(e) => e.preventDefault()}
