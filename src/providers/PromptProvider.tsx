@@ -42,7 +42,13 @@ function useProvidePrompt() {
         options,
         title: "Select option",
       }),
-    askAlternatives: (title:string, options: string[], placeholder?:string) => 
+    askSelect: (options: string[], title: string) =>
+      ask<string>({
+        type: "select",
+        options,
+        title,
+      }),
+    askAlternatives: (title:string, options: string[], placeholder?:string) =>
       ask<{ tree: Tree, value: string, option: string}>({
         type: 'alternatives',
         options,

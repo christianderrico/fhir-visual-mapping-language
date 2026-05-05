@@ -14,70 +14,81 @@ export interface EvaluationContext {
   flow: ReturnType<typeof useFlow>;
 }
 
-export function evaluateReference(
+type VisitorMap = {
+  [nodeName: string]: (node: SyntaxNode, doc: string, ctx: EvaluationContext) => void;
+};
+
+export function visit(
   node: SyntaxNode,
   doc: string,
   ctx: EvaluationContext,
+  visitors: VisitorMap,
 ): void {
-  const cursor = node.cursor();
-  cursor.firstChild();
-  console.log("evaluateReference");
-  console.log(cursor);
-  console.log("params", node, ctx.data.target, ctx.data.targetHandle);
 
-  if (cursor.name === "Variable") {
-    const identifier = doc.slice(cursor.from, cursor.to);
-    const node = ctx.flow
+  const handler = visitors[node.name];
+
+  if (handler) {
+    handler(node, doc, ctx);
+    return;
+  }
+
+  let child = node.firstChild;
+  while (child) {
+    visit(child, doc, ctx, visitors);
+    child = child.nextSibling;
+  }
+}
+
+export function evaluatePostfix(
+  node: SyntaxNode,
+  doc: string,
+  ctx: EvaluationContext,
+  visitors: VisitorMap
+): void {
+  const firstChild = node.firstChild!;
+  const lastChild = node.lastChild!;
+
+  const getNode: (alias: string) => string = (alias) => {
+    return ctx.flow
       .getActiveNodesAndEdges()
-      .nodes.find((x) => x.data.alias === identifier)!.id;
+      .nodes.find((x) => x.data.alias === alias)!.id;
+  }
+
+  const getVariable: (node: SyntaxNode | null | undefined) => string = (node) => {
+    const cursor = node?.cursor();
+    return doc.slice(cursor?.from, cursor?.to);
+  }
+
+  if(firstChild.name === "FpPrimary" && firstChild.firstChild?.name === "Identifier"){
+    const variable = getVariable(firstChild.firstChild?.firstChild)
+
+    const node = getNode(variable)
     const edgeId = ctx.data.target + "." + ctx.data.targetHandle;
+
     ctx.flow.addEdge({
       id: edgeId,
       source: node,
       target: ctx.data.target,
       targetHandle: ctx.data.targetHandle,
     });
-  } else if (cursor.name === "FieldAccess") {
-    cursor.firstChild(); // Variable
-    const identifier = doc.slice(cursor.from, cursor.to);
-    const propertyChain = [];
-    while (cursor.nextSibling()) {
-      // PropertyAccess+
-      cursor.firstChild();
-      const property = doc.slice(cursor.from, cursor.to);
-      propertyChain.push(property);
-      cursor.parent();
-    }
+  } else if (lastChild.name === "Identifier" && firstChild.name === "FpPostfix") {
+    const variable = getVariable(firstChild.firstChild?.firstChild)
+    const field = getVariable(lastChild)
 
-    // TODO: Unroll chain
-    console.group(identifier);
-    console.log(propertyChain);
-    console.groupEnd();
-
-    if (propertyChain.length > 1) {
-      throw new Error("TODO: implement chain unrolling");
-    }
-
-    const node = ctx.flow
-      .getActiveNodesAndEdges()
-      .nodes.find((x) => x.data.alias === identifier)!.id;
-    console.log(
-      ctx.flow
-        .getActiveNodesAndEdges()
-        .nodes.find((x) => x.data.alias === identifier),
-    );
-
+    const node = getNode(variable)
     const edgeId = ctx.data.target + "." + ctx.data.targetHandle;
-    console.log("Reference", edgeId);
-    console.log("NODO: ", node);
-    console.log(propertyChain);
+
     ctx.flow.addEdge({
-      id: uuid(),
+      id: edgeId,
       source: node,
-      sourceHandle: propertyChain[0],
+      sourceHandle: field,
       target: ctx.data.target,
       targetHandle: ctx.data.targetHandle,
     });
+  } else if (lastChild.name === "FpExpression") {
+    // TODO
+  } else {
+    visit(firstChild, doc, ctx, visitors);
   }
 }
 
@@ -124,90 +135,66 @@ export function evaluateLiteral(
   console.log("literal", doc.slice(node.from, node.to));
 }
 
-export function evaluate(
-  tree: Tree,
+export function evaluateCall(
+  node: SyntaxNode,
   doc: string,
   ctx: EvaluationContext,
+  visitors: VisitorMap,
 ): void {
-  const cursor = tree.cursor(); // program
+  const identNode = node.firstChild!;
+  const argListNode = identNode.nextSibling;
+  const transformName = doc.slice(identNode.from, identNode.to);
+  const nodeId = uuid();
 
-  let flag = true;
-  while (cursor.name != "FpPrimary" && cursor.name != "Reference" && flag) {
-    flag = cursor.firstChild();
+  ctx.flow.addNode({
+    id: nodeId,
+    position: ctx.data.xyPos,
+    origin: [0.5, 0.0],
+    type: "transformNode",
+    data: {
+      transformName,
+      args: transformName === "uuid"
+        ? [{ datatype: Datatype.STRING, value: "uuid_" + ctx.data.target }]
+        : [],
+      groupName: ctx.flow.activeTab,
+    },
+  });
+
+  ctx.flow.addEdge({
+    id: ctx.data.target + "." + ctx.data.targetHandle,
+    type: "customEdge",
+    source: nodeId,
+    target: ctx.data.target,
+    targetHandle: ctx.data.targetHandle,
+    data: { condition: ctx.data.condition },
+  });
+
+  let argChild = argListNode?.firstChild ?? null;
+  let argIndex = 0;
+  while (argChild) {
+    visit(argChild, doc, {
+      ...ctx,
+      data: {
+        ...ctx.data,
+        target: nodeId,
+        targetHandle: argIndex.toString(),
+        xyPos: {
+          x: ctx.data.xyPos.x - 150,
+          y: ctx.data.xyPos.y + argIndex * 50,
+        },
+      },
+    }, visitors);
+    argIndex++;
+    argChild = argChild.nextSibling;
+  }
+}
+
+export function evaluate(tree: Tree, doc: string, ctx: EvaluationContext): void {
+  const visitors: VisitorMap = {
+    Call: (node, doc, ctx) => evaluateCall(node, doc, ctx, visitors),
+    FpPostfix: (node, doc, ctx) => evaluatePostfix(node, doc, ctx, visitors),
+    Literal: (node, doc, ctx) => evaluateLiteral(node, doc, ctx),
   }
 
-  if (cursor.name != "Reference") cursor.firstChild();
-
-  switch (cursor.name) {
-    case "Call":
-      cursor.firstChild(); // Identifier
-      const transformName = doc.slice(cursor.from, cursor.to);
-      cursor.nextSibling(); // TransformArgs
-      cursor.firstChild(); // TransformArg
-
-      const nodeId = uuid();
-
-      console.log(ctx.data.target)
-      console.log("NOME DELLA TRANSFORM NAME: ", transformName)
-
-      ctx.flow.addNode({
-        id: nodeId,
-        position: ctx.data.xyPos,
-        origin: [0.5, 0.0] as [number, number],
-        type: "transformNode",
-        data: {
-          transformName,
-          args: transformName === 'uuid' ? [{ datatype: Datatype.STRING, value: 'uuid_' + ctx.data.target }] : [],
-          groupName: ctx.flow.activeTab,
-        },
-      });
-
-      const edgeId = ctx.data.target + "." + ctx.data.targetHandle;
-
-      ctx.flow.addEdge({
-        id: edgeId,
-        type: "customEdge",
-        source: nodeId,
-        target: ctx.data.target,
-        targetHandle: ctx.data.targetHandle,
-        data: {
-          condition: ctx.data.condition,
-        },
-      });
-
-      console.group(transformName);
-
-      const newCtx = { ...ctx };
-      let targetHandleNum = 0;
-      newCtx.data.xyPos = {
-        ...newCtx.data.xyPos,
-        x: newCtx.data.xyPos.x - 150,
-      };
-      newCtx.data.target = nodeId;
-      newCtx.data.targetHandle = targetHandleNum.toString();
-
-      do {
-        cursor.firstChild(); // Reference | Literal
-        if ((cursor.name as string) === "Reference") {
-          evaluateReference(cursor.node, doc, newCtx);
-        } else if ((cursor.name as string) === "FpExpression") {
-          evaluateLiteral(cursor.node, doc, newCtx);
-        }
-        newCtx.data.xyPos = {
-          x: newCtx.data.xyPos.x,
-          y: newCtx.data.xyPos.y + 50,
-        };
-        targetHandleNum++;
-        newCtx.data.targetHandle = targetHandleNum.toString();
-        cursor.parent(); // TransformArg
-      } while (cursor.nextSibling());
-      console.groupEnd();
-      break;
-    case "Reference":
-      evaluateReference(cursor.node, doc, ctx);
-      break;
-    case "Literal":
-      evaluateLiteral(cursor.node, doc, ctx);
-      break;
-  }
+  visit(tree.topNode, doc, ctx, visitors);
 }

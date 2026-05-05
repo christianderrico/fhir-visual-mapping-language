@@ -1,5 +1,5 @@
 import type { Edge, Node } from "@xyflow/react";
-import { FMLBaseEntity, FMLGroupNode, FMLNode, FMLRule } from "./fml-entities";
+import { FMLBaseEntity, FMLGroupNode, FMLRule } from "./fml-entities";
 import {
   findNode,
   isFakeNode,
@@ -49,6 +49,18 @@ export function buildRules(
         nodes,
         edges,
       )?.setCondition(condition);
+    }
+
+    if (sourceNode.type === "sourceNode" && targetNode.type === "sourceNode") {
+      const leftParam = transformParamFromNode(
+        targetNode,
+        targetHandle ?? undefined,
+      );
+      const rightParam = transformParamFromNode(
+        sourceNode,
+        sourceHandle ?? undefined,
+      );
+      return handleSourceToSource(leftParam, rightParam);
     }
 
     if (sourceNode.type === "targetNode" && targetNode.type === "targetNode") {
@@ -218,6 +230,19 @@ function handleCreateOperation(
   );
 }
 
+function handleSourceToSource(
+  sourceParam: TransformParameter,
+  targetParam: TransformParameter,
+) {
+  return new FMLRule(
+    `navigation_${sourceParam.id}-${targetParam.id}`,
+    "sourceNode",
+    "create",
+    sourceParam,
+    [targetParam],
+  );
+}
+
 function handleCopyOperation(
   sourceNode: Node,
   targetNode: Node,
@@ -328,103 +353,48 @@ interface Dependency {
   children: Dependency[];
 }
 
-const createChildNode = (alias: string, father: FMLNode, field?: string) => ({
-  alias,
-  field,
-  father,
-  children: [],
-});
-
-const processChildNodes = (
-  children: Set<FMLBaseEntity>,
-  fatherAlias: string,
-  new_node: any,
-  nodeType: string,
-) => {
-  const childrenArray = Array.from(children.values());
-
-  childrenArray.forEach((child) => {
-    if (isRule(child)) {
-      processRuleChild(child, fatherAlias, new_node, nodeType);
-    } else if (isGroupNode(child)) {
-      processGroupNodeChild(child, fatherAlias, new_node, nodeType);
-    }
-  });
-};
-
-const processRuleChild = (
-  child: FMLRule,
-  fatherAlias: string,
-  new_node: any,
-  node_type: string,
-) => {
-  if (node_type === "sourceNode")
-    child.rightParams
-      .filter(
-        (p: Parameter): p is TransformParameter =>
-          isTransformParam(p) && p.alias === fatherAlias,
-      )
-      .forEach((transformParam: TransformParameter) => {
-        new_node.children.push(
-          createChildNode(transformParam.alias, new_node, transformParam.field),
-        );
-      });
-  else {
-    if (child.leftParam.alias === fatherAlias) {
-      new_node.children.push(
-        createChildNode(child.leftParam.alias, new_node, child.leftParam.field),
-      );
-    }
-  }
-};
-
-const processGroupNodeChild = (
-  child: any,
-  fatherAlias: string,
-  new_node: any,
-  nodeType: string,
-) => {
-  const references = nodeType === "sourceNode" ? child.sources : child.targets;
-
-  references
-    .filter((ref: TransformParameter) => ref.alias === fatherAlias)
-    .forEach((ref: TransformParameter) => {
-      new_node.children.push(createChildNode(ref.alias, new_node, ref.field));
-    });
-};
-
 export function createTreeVariables(
   node: FMLBaseEntity,
   new_nodes: Dependency[] = [],
-) {
+  parent?: Dependency,
+): Dependency[] {
   if (
     isNode(node) &&
     !isTransformNode(node) &&
     !isGroupNode(node) &&
     !isFakeNode(node)
   ) {
-    const new_node = { alias: node.alias, children: [] } as Dependency;
-
-    if (node.father && !isFakeNode(node.father)) {
-      //console.log(new_node)
-      const field = new_node.alias.split("_")[0];
-
-      const prev_node = new_nodes
-        .flatMap((n) => n.children)
-        .find((c: Dependency) => c.field === field);
-
-      new_node.father = prev_node;
-      prev_node?.children.push(new_node);
-    } else if (!new_nodes.find((n) => n.alias === new_node.alias)) {
-      new_nodes.push(new_node);
+    let current_node: Dependency;
+    if (!parent) {
+      current_node = { alias: node.alias, children: [] } as Dependency;
+      new_nodes.push(current_node);
+    } else {
+      current_node = {
+        alias: node.alias,
+        children: [],
+        father: parent,
+      } as Dependency;
+      parent.children.push(current_node);
     }
-
-    const children = new Set(node.children);
-    const fatherAlias = node.alias;
-
-    processChildNodes(children, fatherAlias, new_node, node.type);
+    node.children.forEach((c) =>
+      createTreeVariables(c, new_nodes, current_node),
+    );
+  } else if (isRule(node)) {
+    let current_node: Dependency;
+    parent!.children.push(...node.rightParams.filter(isTransformParam).map((param) => {
+      current_node = {
+        alias: param.alias,
+        field: param.field,
+        children: [],
+        father: parent,
+      };
+      return current_node;
+    }));
+    node.children.forEach((c) => createTreeVariables(c, new_nodes, current_node));
+  } else {
+    node.children.forEach((c) => createTreeVariables(c, new_nodes, parent));
   }
-  node.children.forEach((c) => createTreeVariables(c, new_nodes));
+
   return new_nodes;
 }
 
@@ -504,10 +474,12 @@ const getChain = (name: Partial<Dependency>, tree: Dependency[]) => {
   const mappedChain = chain.map((c, i) =>
     i === chain.length - 1
       ? { ...c, add_alias: c.alias!.split("_")[1] }
-      : { ...c, add_alias: chain[i + 1].alias!.split("_")[1] },
+      : { ...c, add_alias: chain[i + 1].alias! },
   );
 
-  return mappedChain;
+  const filteredChain = mappedChain.filter((v) => v.field != undefined)
+
+  return filteredChain;
 };
 
 const getDependencies = (
@@ -525,7 +497,7 @@ const getDependencies = (
 const indent = (level: number) => "  ".repeat(level > 0 ? level : 0);
 
 const step = (s: Partial<Dependency> & { add_alias: string }) =>
-  `${s.alias}${s.field ? `.${s.field} as ${s.field}_${s.add_alias} ` : " "}`;
+  `${s.alias}${s.field ? `.${s.field} as ${s.add_alias.includes("_") ? s.add_alias : s.field + "_" + s.add_alias} ` : " "}`;
 
 const open = (
   chain: Partial<Dependency> & { add_alias: string }[],
@@ -604,9 +576,7 @@ const printBlock =
         sources,
       );
       const targetChain = getDependencies([node.leftParam], sources);
-
-      const extraIndent =
-        sourceChain.length || targetChain.length ? level + 1 : 0;
+      const extraIndent = sourceChain.length + targetChain.length;
 
       return buildBlock(
         sourceChain,

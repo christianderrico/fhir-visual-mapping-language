@@ -135,8 +135,8 @@ export function PromptModal({
             )}
           />
         )}
-        {prompt?.type === "select" ||
-          (prompt?.type === "alternatives" && (
+        {(prompt?.type === "select" ||
+          prompt?.type === "alternatives") && (
             <Stack gap={4}>
             <Text fw={200}>Select option</Text>
             <Select
@@ -157,7 +157,7 @@ export function PromptModal({
               }}
             />
             </Stack>
-          ))}
+          )}
         {(prompt?.type === "expression" || prompt?.type === "alternatives") && (
           <Box h="500px">
             <Stack gap="md">

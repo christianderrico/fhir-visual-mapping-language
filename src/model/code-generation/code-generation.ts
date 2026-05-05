@@ -1,6 +1,6 @@
 import { type Edge, type Node } from "@xyflow/react";
 import { FMLGroupNode, FMLNode, FMLRule } from "./fml-entities";
-import { debugTree, findNode, isGroupNode, isTransformParam } from "./fml-utils";
+import { findNode, isGroupNode, isTransformParam } from "./fml-utils";
 import {
   attachParentChild,
   buildRules,
@@ -181,6 +181,7 @@ function generateGroup(
   const rules = buildRules(nodes, edges).filter(
     (r) => r != null && r != undefined,
   );
+
   rules
     .filter((r) => r.type !== "groupNode")
     .forEach((rule) => {
@@ -227,6 +228,8 @@ function generateGroup(
   const sourceTree = createTreeVariables(mockFMLSource);
   const targetTree = createTreeVariables(mockFMLTarget);
 
+  console.log(sourceTree)
+
   let lines = [];
   lines.push(
     "",
@@ -237,8 +240,6 @@ function generateGroup(
     ]}${srcs.length > 0 ? ", " : ""}${[...tgts.map((t) => `target ${t.alias} : ${t.resource}`)]}) {`,
   );
 
-  debugTree(mockFMLTarget)
-
   if (srcs.length > 0 && tgts.length > 0) {
     const dependencies = collectDependencies(
       mockFMLTarget,
@@ -246,8 +247,6 @@ function generateGroup(
       edges,
       nodeMap,
     );
-
-    console.log(dependencies)
 
     lines = printRuleTree(
       mockFMLTarget,

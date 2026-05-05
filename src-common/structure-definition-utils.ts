@@ -1,6 +1,6 @@
 import { Datatype, type Field, type Resource } from "./fhir-types";
 import { isElementLike } from "../src/model/type-environment-utils";
-import { url, type URL } from "./strict-types";
+import { basename, url, type URL } from "./strict-types";
 import type { ValueSet, ValueSetEntry } from "./valueset-types";
 
 export class UndefinedSnapshotError extends Error {
@@ -229,6 +229,8 @@ function parseOne(type: any, metadata: Metadata): Field | undefined {
     };
   }
   if (type.code === "Reference") {
+    console.log(type.targetProfile.map((t: URL | undefined) => basename(t)))
+
     return {
       kind: "reference",
       value: type.targetProfile!,

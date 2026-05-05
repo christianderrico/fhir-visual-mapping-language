@@ -116,6 +116,7 @@ export const TargetNode: FC<TargetNodeProps> = (props) => {
           />
         )}
         <Handle
+          id={"target" + props.id}
           type="target"
           position={Position.Left}
           className={classes.handle}
